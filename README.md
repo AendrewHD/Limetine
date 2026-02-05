@@ -14,17 +14,23 @@ A modern, simple, self-hosted project timeline tool.
     npm install
     ```
 
-2.  **Initialize Database:**
+2.  **Configure Environment:**
+    Copy the example environment file:
+    ```bash
+    cp .env.example .env
+    ```
+
+3.  **Initialize Database:**
     ```bash
     npx prisma migrate dev --name init
     ```
 
-3.  **Run Development Server:**
+4.  **Run Development Server:**
     ```bash
     npm run dev
     ```
 
-4.  Open [http://localhost:3000](http://localhost:3000).
+5.  Open [http://localhost:3000](http://localhost:3000).
 
 ## Tech Stack
 -   **Framework**: Next.js (App Router)
