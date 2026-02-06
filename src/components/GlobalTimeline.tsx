@@ -10,16 +10,16 @@ interface GlobalTimelineProps {
 }
 
 export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
-  // Filter out projects with no tasks or filter out tasks with invalid dates if needed
   const projectsWithTasks = projects.filter(p => p.tasks.length > 0)
-
   const allTasks = projects.flatMap(p => p.tasks)
 
   if (allTasks.length === 0) {
     return (
-      <div className="border rounded-lg dark:border-zinc-700 p-8 text-center bg-white dark:bg-zinc-900">
-        <h3 className="text-lg font-medium">Global Timeline</h3>
-        <p className="text-gray-500 mt-2">No tasks found across any projects.</p>
+      <div className="space-y-4">
+        <h2 className="text-2xl font-semibold">Global Timeline</h2>
+        <div className="border rounded-lg dark:border-zinc-700 p-8 text-center bg-white dark:bg-zinc-900">
+          <p className="text-gray-500">No tasks found across any projects.</p>
+        </div>
       </div>
     )
   }
