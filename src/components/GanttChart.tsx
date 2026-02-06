@@ -2,27 +2,34 @@
 
 import { format, differenceInDays, addDays, startOfDay, min, max } from 'date-fns'
 import { Task } from '@prisma/client'
+import { useMemo } from 'react'
 
 interface GanttChartProps {
   tasks: Task[]
 }
 
 export default function GanttChart({ tasks }: GanttChartProps) {
+  const { viewStartDate, totalDays, days } = useMemo(() => {
+    if (tasks.length === 0) {
+      return { viewStartDate: new Date(), totalDays: 0, days: [] }
+    }
+
+    const dates = tasks.flatMap(t => [new Date(t.startDate), new Date(t.endDate)])
+    const minDate = startOfDay(min(dates))
+    const maxDate = startOfDay(max(dates))
+
+    // Add some buffer
+    const viewStartDate = addDays(minDate, -2)
+    const viewEndDate = addDays(maxDate, 5)
+    const totalDays = differenceInDays(viewEndDate, viewStartDate) + 1
+
+    const days = Array.from({ length: totalDays }, (_, i) => addDays(viewStartDate, i))
+    return { viewStartDate, totalDays, days }
+  }, [tasks])
+
   if (tasks.length === 0) {
     return <div className="text-center p-10 text-gray-500">No tasks found. Add a task to see the timeline.</div>
   }
-
-  // Determine date range
-  const dates = tasks.flatMap(t => [new Date(t.startDate), new Date(t.endDate)])
-  const minDate = startOfDay(min(dates))
-  const maxDate = startOfDay(max(dates))
-
-  // Add some buffer
-  const viewStartDate = addDays(minDate, -2)
-  const viewEndDate = addDays(maxDate, 5)
-  const totalDays = differenceInDays(viewEndDate, viewStartDate) + 1
-
-  const days = Array.from({ length: totalDays }, (_, i) => addDays(viewStartDate, i))
 
   return (
     <div className="overflow-x-auto border rounded-lg dark:border-zinc-700">
