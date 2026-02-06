@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { cache } from 'react'
 
 export async function createProject(formData: FormData) {
   const name = formData.get('name') as string
@@ -27,12 +28,12 @@ export async function getProjects() {
   })
 }
 
-export async function getProject(id: string) {
+export const getProject = cache(async (id: string) => {
   return await prisma.project.findUnique({
     where: { id },
     include: { tasks: { orderBy: { startDate: 'asc' } } },
   })
-}
+})
 
 export async function createTask(formData: FormData) {
   const name = formData.get('name') as string
