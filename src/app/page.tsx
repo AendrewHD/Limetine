@@ -1,7 +1,13 @@
 import NewProjectForm from '@/components/NewProjectForm'
 import ProjectList from '@/components/ProjectList'
+import GlobalTimeline from '@/components/GlobalTimeline'
+import { getProjects } from '@/app/actions'
 
-export default function Home() {
+export const dynamic = 'force-dynamic'
+
+export default async function Home() {
+  const projects = await getProjects()
+
   return (
     <main className="min-h-screen p-8 lg:p-24 dark:bg-zinc-950 dark:text-white">
       <div className="max-w-6xl mx-auto space-y-12">
@@ -14,8 +20,12 @@ export default function Home() {
         </header>
 
         <section>
+          <GlobalTimeline projects={projects} />
+        </section>
+
+        <section>
           <h2 className="text-2xl font-semibold mb-6">Your Projects</h2>
-          <ProjectList />
+          <ProjectList projects={projects} />
         </section>
       </div>
     </main>
