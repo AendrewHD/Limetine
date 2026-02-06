@@ -30,7 +30,12 @@ export async function getProjects() {
 export async function getProject(id: string) {
   return await prisma.project.findUnique({
     where: { id },
-    include: { tasks: { orderBy: { startDate: 'asc' } } },
+    include: {
+      tasks: {
+        orderBy: { startDate: 'asc' },
+        include: { milestones: true }
+      }
+    },
   })
 }
 
@@ -65,4 +70,34 @@ export async function deleteTask(id: string, projectId: string) {
     where: { id },
   })
   revalidatePath(`/projects/${projectId}`)
+}
+
+export async function createMilestone(formData: FormData) {
+  const name = formData.get('name') as string
+  const date = formData.get('date') as string
+  const shape = formData.get('shape') as string || 'circle'
+  const taskId = formData.get('taskId') as string
+
+  if (!name || !date || !taskId) {
+    return { error: 'Missing required fields' }
+  }
+
+  // We need to know the projectId to revalidate the path
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+    select: { projectId: true }
+  })
+
+  if (!task) return { error: 'Task not found' }
+
+  await prisma.milestone.create({
+    data: {
+      name,
+      date: new Date(date),
+      shape,
+      taskId
+    }
+  })
+
+  revalidatePath(`/projects/${task.projectId}`)
 }
