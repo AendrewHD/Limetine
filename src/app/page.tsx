@@ -1,12 +1,14 @@
 import NewProjectForm from '@/components/NewProjectForm'
 import ProjectList from '@/components/ProjectList'
 import GlobalTimeline from '@/components/GlobalTimeline'
-import { getProjects } from '@/app/actions'
+import StatusManager from '@/components/StatusManager'
+import { getProjects, getTaskStatuses } from '@/app/actions'
 
 export const dynamic = 'force-dynamic'
 
 export default async function Home() {
   const projects = await getProjects()
+  const statuses = await getTaskStatuses()
 
   return (
     <main className="min-h-screen p-8 lg:p-24 dark:bg-zinc-950 dark:text-white">
@@ -16,7 +18,10 @@ export default async function Home() {
             <h1 className="text-4xl font-bold tracking-tight">Limetine</h1>
             <p className="mt-2 text-gray-500 dark:text-gray-400">Project Timeline Manager</p>
           </div>
-          <NewProjectForm />
+          <div className="flex gap-2">
+            <StatusManager statuses={statuses} />
+            <NewProjectForm />
+          </div>
         </header>
 
         <section>
