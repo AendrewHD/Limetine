@@ -40,7 +40,10 @@ export async function createTask(formData: FormData) {
   const startDate = formData.get('startDate') as string
   const endDate = formData.get('endDate') as string
   const projectId = formData.get('projectId') as string
-  const status = formData.get('status') as string || 'TODO'
+
+  const VALID_STATUSES = ['TODO', 'IN_PROGRESS', 'DONE']
+  const rawStatus = formData.get('status') as string
+  const status = VALID_STATUSES.includes(rawStatus) ? rawStatus : 'TODO'
 
   if (!name || !startDate || !endDate || !projectId) {
     return { error: 'Missing required fields' }
