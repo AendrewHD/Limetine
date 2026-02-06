@@ -2,6 +2,7 @@
 
 import { format, differenceInDays, addDays, startOfDay, min, max } from 'date-fns'
 import { Project, Task } from '@prisma/client'
+import { generateGlobalPDF } from '@/lib/pdfGenerator'
 import { useDraggableScroll } from '@/hooks/useDraggableScroll'
 
 type ProjectWithTasks = Project & { tasks: Task[] }
@@ -40,7 +41,15 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-semibold">Global Timeline</h2>
+      <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-semibold">Global Timeline</h2>
+          <button
+            onClick={() => generateGlobalPDF(projects)}
+            className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-zinc-800 dark:border-zinc-700 dark:text-gray-300 dark:hover:bg-zinc-700"
+          >
+            Export PDF
+          </button>
+      </div>
       <div
         ref={ref}
         onMouseDown={onMouseDown}
