@@ -1,8 +1,11 @@
+import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { getProject } from '@/app/actions'
 import GanttChart from '@/components/GanttChart'
 import NewTaskForm from '@/components/NewTaskForm'
-import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import ExportProjectButton from '@/components/ExportProjectButton'
+
+export const dynamic = 'force-dynamic'
 
 export default async function ProjectPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -30,7 +33,10 @@ export default async function ProjectPage(props: { params: Promise<{ id: string 
         </header>
 
         <section className="space-y-4">
-            <h2 className="text-xl font-semibold">Timeline</h2>
+            <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Timeline</h2>
+                <ExportProjectButton project={project} />
+            </div>
             <GanttChart tasks={project.tasks} />
         </section>
       </div>
