@@ -46,12 +46,19 @@ export async function createTask(formData: FormData) {
     return { error: 'Missing required fields' }
   }
 
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return { error: 'Invalid date format' }
+  }
+
   await prisma.task.create({
     data: {
       name,
       description,
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
+      startDate: start,
+      endDate: end,
       projectId,
       status
     },
