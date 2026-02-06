@@ -47,7 +47,7 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseLeave}
         onMouseMove={onMouseMove}
-        className="overflow-x-auto overflow-y-auto max-h-[80vh] border rounded-lg dark:border-zinc-700 bg-white dark:bg-zinc-900"
+        className="overflow-x-auto overflow-y-auto max-h-[80vh] border rounded-lg dark:border-zinc-700 bg-white dark:bg-zinc-900 no-scrollbar"
       >
         <div className="min-w-[800px]">
           {/* Header */}

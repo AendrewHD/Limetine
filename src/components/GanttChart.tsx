@@ -34,7 +34,7 @@ export default function GanttChart({ tasks }: GanttChartProps) {
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseLeave}
       onMouseMove={onMouseMove}
-      className="overflow-x-auto overflow-y-auto max-h-[80vh] border rounded-lg dark:border-zinc-700"
+      className="overflow-x-auto overflow-y-auto max-h-[80vh] border rounded-lg dark:border-zinc-700 no-scrollbar"
     >
       <div className="min-w-[800px]">
         {/* Header */}
