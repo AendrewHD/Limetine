@@ -1,12 +1,15 @@
 import NewProjectForm from '@/components/NewProjectForm'
 import ProjectList from '@/components/ProjectList'
 import GlobalTimeline from '@/components/GlobalTimeline'
-import { getProjects } from '@/app/actions'
+import { getProjects, getTimelineData } from '@/app/actions'
 
 export const dynamic = 'force-dynamic'
 
 export default async function Home() {
-  const projects = await getProjects()
+  const [projects, timelineData] = await Promise.all([
+    getProjects(),
+    getTimelineData()
+  ])
 
   return (
     <main className="min-h-screen p-8 lg:p-24 dark:bg-zinc-950 dark:text-white">
@@ -20,7 +23,7 @@ export default async function Home() {
         </header>
 
         <section>
-          <GlobalTimeline projects={projects} />
+          <GlobalTimeline projects={timelineData} />
         </section>
 
         <section>

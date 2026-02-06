@@ -20,10 +20,17 @@ export async function createProject(formData: FormData) {
   revalidatePath('/')
 }
 
-export async function getProjects() {
+export async function getTimelineData() {
   return await prisma.project.findMany({
     orderBy: { createdAt: 'desc' },
     include: { tasks: true }
+  })
+}
+
+export async function getProjects() {
+  return await prisma.project.findMany({
+    orderBy: { createdAt: 'desc' },
+    include: { _count: { select: { tasks: true } } }
   })
 }
 
