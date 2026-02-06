@@ -1,9 +1,13 @@
 import Link from 'next/link'
-import { getProjects } from '@/app/actions'
+import { Project, Task } from '@prisma/client'
 
-export default async function ProjectList() {
-  const projects = await getProjects()
+type ProjectWithTasks = Project & { tasks: Task[] }
 
+interface ProjectListProps {
+  projects: ProjectWithTasks[]
+}
+
+export default function ProjectList({ projects }: ProjectListProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {projects.map((project) => (
