@@ -1,3 +1,4 @@
+import { getProject, getTaskStatuses } from '@/app/actions'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getProject } from '@/app/actions'
@@ -10,6 +11,7 @@ export const dynamic = 'force-dynamic'
 export default async function ProjectPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const project = await getProject(params.id)
+  const statuses = await getTaskStatuses()
 
   if (!project) {
     notFound()
@@ -29,7 +31,7 @@ export default async function ProjectPage(props: { params: Promise<{ id: string 
             <h1 className="text-3xl font-bold">{project.name}</h1>
             <p className="mt-2 text-gray-500 dark:text-gray-400">{project.description}</p>
           </div>
-          <NewTaskForm projectId={project.id} />
+          <NewTaskForm projectId={project.id} statuses={statuses} />
         </header>
 
         <section className="space-y-4">

@@ -3,7 +3,14 @@
 import { createTask } from '@/app/actions'
 import { useState } from 'react'
 
-export default function NewTaskForm({ projectId }: { projectId: string }) {
+type Status = {
+  id: string
+  label: string
+  value: string
+  color: string | null
+}
+
+export default function NewTaskForm({ projectId, statuses = [] }: { projectId: string, statuses?: Status[] }) {
   const [isOpen, setIsOpen] = useState(false)
 
   if (!isOpen) {
@@ -53,9 +60,13 @@ export default function NewTaskForm({ projectId }: { projectId: string }) {
             </div>
         </div>
         <select name="status" className="p-2 border rounded dark:bg-zinc-800 dark:border-zinc-600">
-            <option value="TODO">To Do</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="DONE">Done</option>
+            {statuses.length > 0 ? (
+                statuses.map(status => (
+                    <option key={status.id} value={status.value}>{status.label}</option>
+                ))
+            ) : (
+                <option value="TODO">To Do</option>
+            )}
         </select>
 
         <div className="flex gap-2 mt-2">
