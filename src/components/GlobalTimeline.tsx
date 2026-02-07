@@ -10,12 +10,14 @@ type ProjectWithTasks = Project & { tasks: Task[] }
 
 interface GlobalTimelineProps {
   projects: ProjectWithTasks[]
+  initialStartDate: Date
+  totalDays: number
 }
 
 const COLUMN_WIDTH = 50
 const SIDEBAR_WIDTH = 200
 
-export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
+export default function GlobalTimeline({ projects, initialStartDate, totalDays }: GlobalTimelineProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<Date | null>(null)
   const [dragEnd, setDragEnd] = useState<Date | null>(null)
@@ -29,24 +31,9 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const allTasks = projects.flatMap(p => p.tasks)
-
-  // Determine date range
-  let minDate: Date, maxDate: Date
-  if (allTasks.length > 0) {
-    const dates = allTasks.flatMap(t => [new Date(t.startDate), new Date(t.endDate)])
-    minDate = startOfDay(min(dates))
-    maxDate = startOfDay(max(dates))
-  } else {
-    const today = startOfToday()
-    minDate = addDays(today, -7)
-    maxDate = addDays(today, 7)
-  }
-
-  // Add some buffer
-  const viewStartDate = addDays(minDate, -2)
-  const viewEndDate = addDays(maxDate, 5)
-  const totalDays = differenceInDays(viewEndDate, viewStartDate) + 1
+  // Use props for range
+  const viewStartDate = initialStartDate
+  // totalDays is passed as prop
 
   const days = Array.from({ length: totalDays }, (_, i) => addDays(viewStartDate, i))
   const gridTemplateColumns = `${SIDEBAR_WIDTH}px repeat(${totalDays}, ${COLUMN_WIDTH}px)`
@@ -144,8 +131,8 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
             <div className="p-2 font-bold border-r dark:border-zinc-700 sticky left-0 bg-gray-50 dark:bg-zinc-800 z-20">Project / Task</div>
             {days.map(day => (
               <div key={day.toISOString()} className="p-2 text-center text-xs border-r border-gray-100 dark:border-zinc-700 last:border-r-0" style={{ width: COLUMN_WIDTH }}>
-                <div className="font-semibold">{format(day, 'd')}</div>
-                <div className="text-gray-500">{format(day, 'MMM')}</div>
+                <div className="font-semibold" suppressHydrationWarning>{format(day, 'd')}</div>
+                <div className="text-gray-500" suppressHydrationWarning>{format(day, 'MMM')}</div>
               </div>
             ))}
           </div>
