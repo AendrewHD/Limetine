@@ -9,9 +9,10 @@ interface TaskCreationModalProps {
   initialStartDate?: Date
   initialEndDate?: Date
   projectId: string
+  projects?: { id: string, name: string }[]
 }
 
-export default function TaskCreationModal({ isOpen, onClose, initialStartDate, initialEndDate, projectId }: TaskCreationModalProps) {
+export default function TaskCreationModal({ isOpen, onClose, initialStartDate, initialEndDate, projectId, projects }: TaskCreationModalProps) {
   if (!isOpen) return null
 
   return (
@@ -24,7 +25,22 @@ export default function TaskCreationModal({ isOpen, onClose, initialStartDate, i
           }}
           className="flex flex-col gap-4"
         >
-          <input type="hidden" name="projectId" value={projectId} />
+          {projects && projects.length > 1 ? (
+             <div>
+                <label className="block text-sm font-medium mb-1">Project</label>
+                <select
+                    name="projectId"
+                    defaultValue={projectId}
+                    className="w-full p-2 border rounded dark:bg-zinc-800 dark:border-zinc-600"
+                >
+                    {projects.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                </select>
+             </div>
+          ) : (
+             <input type="hidden" name="projectId" value={projectId} />
+          )}
 
           <div>
             <label className="block text-sm font-medium mb-1">Task Name</label>

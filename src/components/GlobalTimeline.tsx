@@ -128,6 +128,7 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
         initialStartDate={dragStart && dragEnd ? (dragStart < dragEnd ? dragStart : dragEnd) : undefined}
         initialEndDate={dragStart && dragEnd ? (dragStart < dragEnd ? dragEnd : dragStart) : undefined}
         projectId={dragProjectId || ''}
+        projects={projects}
       />
 
       <div
@@ -219,14 +220,14 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
                             gridColumnEnd: `span ${duration}`
                           }}
                         >
-                          {/* Resize Handles */}
+                          {/* Resize Handles - VISIBLE INDICATORS */}
                           <div
-                             className="absolute left-0 top-0 bottom-0 w-3 cursor-w-resize z-20 hover:bg-black/10 rounded-l-md"
+                             className="absolute left-0 top-1 bottom-1 w-2 cursor-w-resize z-20 hover:bg-black/20 bg-white/30 rounded-full flex items-center justify-center transition-colors"
                              data-handle="true"
                              onMouseDown={(e) => handleResizeStart(e, task.id, project.id, 'start', effectiveStart)}
                           />
                           <div
-                             className="absolute right-0 top-0 bottom-0 w-3 cursor-e-resize z-20 hover:bg-black/10 rounded-r-md"
+                             className="absolute right-0 top-1 bottom-1 w-2 cursor-e-resize z-20 hover:bg-black/20 bg-white/30 rounded-full flex items-center justify-center transition-colors"
                              data-handle="true"
                              onMouseDown={(e) => handleResizeStart(e, task.id, project.id, 'end', effectiveEnd)}
                           />
