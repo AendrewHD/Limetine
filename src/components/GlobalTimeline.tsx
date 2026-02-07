@@ -2,6 +2,8 @@
 
 import { format, differenceInDays, addDays, startOfDay, min, max } from 'date-fns'
 import { Project, Task } from '@prisma/client'
+import { generateGlobalPDF } from '@/lib/pdfGenerator'
+import { useDraggableScroll } from '@/hooks/useDraggableScroll'
 
 type ProjectWithTasks = Project & { tasks: Task[] }
 
@@ -10,6 +12,7 @@ interface GlobalTimelineProps {
 }
 
 export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
+  const { ref, onMouseDown, onMouseUp, onMouseLeave, onMouseMove } = useDraggableScroll()
   const projectsWithTasks = projects.filter(p => p.tasks.length > 0)
   const allTasks = projects.flatMap(p => p.tasks)
 
@@ -38,12 +41,27 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-semibold">Global Timeline</h2>
-      <div className="overflow-x-auto border rounded-lg dark:border-zinc-700 bg-white dark:bg-zinc-900">
+      <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-semibold">Global Timeline</h2>
+          <button
+            onClick={() => generateGlobalPDF(projects)}
+            className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-zinc-800 dark:border-zinc-700 dark:text-gray-300 dark:hover:bg-zinc-700"
+          >
+            Export PDF
+          </button>
+      </div>
+      <div
+        ref={ref}
+        onMouseDown={onMouseDown}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseLeave}
+        onMouseMove={onMouseMove}
+        className="overflow-x-auto overflow-y-auto max-h-[80vh] border rounded-lg dark:border-zinc-700 bg-white dark:bg-zinc-900 no-scrollbar"
+      >
         <div className="min-w-[800px]">
           {/* Header */}
-          <div className="grid border-b dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800" style={{ gridTemplateColumns: `200px repeat(${totalDays}, minmax(40px, 1fr))` }}>
-            <div className="p-2 font-bold border-r dark:border-zinc-700 sticky left-0 bg-gray-50 dark:bg-zinc-800 z-20">Project / Task</div>
+          <div className="grid border-b dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 sticky top-0 z-20" style={{ gridTemplateColumns: `200px repeat(${totalDays}, minmax(40px, 1fr))` }}>
+            <div className="p-2 font-bold border-r dark:border-zinc-700 sticky left-0 bg-gray-50 dark:bg-zinc-800 z-30">Project / Task</div>
             {days.map(day => (
               <div key={day.toISOString()} className="p-2 text-center text-xs border-r border-gray-100 dark:border-zinc-700 last:border-r-0">
                 <div className="font-semibold">{format(day, 'd')}</div>

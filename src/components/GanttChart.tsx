@@ -2,12 +2,15 @@
 
 import { format, differenceInDays, addDays, startOfDay, min, max } from 'date-fns'
 import { Task } from '@prisma/client'
+import { useDraggableScroll } from '@/hooks/useDraggableScroll'
 
 interface GanttChartProps {
   tasks: Task[]
 }
 
 export default function GanttChart({ tasks }: GanttChartProps) {
+  const { ref, onMouseDown, onMouseUp, onMouseLeave, onMouseMove } = useDraggableScroll()
+
   if (tasks.length === 0) {
     return <div className="text-center p-10 text-gray-500">No tasks found. Add a task to see the timeline.</div>
   }
@@ -25,11 +28,18 @@ export default function GanttChart({ tasks }: GanttChartProps) {
   const days = Array.from({ length: totalDays }, (_, i) => addDays(viewStartDate, i))
 
   return (
-    <div className="overflow-x-auto border rounded-lg dark:border-zinc-700">
+    <div
+      ref={ref}
+      onMouseDown={onMouseDown}
+      onMouseUp={onMouseUp}
+      onMouseLeave={onMouseLeave}
+      onMouseMove={onMouseMove}
+      className="overflow-x-auto overflow-y-auto max-h-[80vh] border rounded-lg dark:border-zinc-700 no-scrollbar"
+    >
       <div className="min-w-[800px]">
         {/* Header */}
-        <div className="grid border-b dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800" style={{ gridTemplateColumns: `200px repeat(${totalDays}, minmax(40px, 1fr))` }}>
-          <div className="p-2 font-bold border-r dark:border-zinc-700 sticky left-0 bg-gray-50 dark:bg-zinc-800 z-10">Task</div>
+        <div className="grid border-b dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 sticky top-0 z-20" style={{ gridTemplateColumns: `200px repeat(${totalDays}, minmax(40px, 1fr))` }}>
+          <div className="p-2 font-bold border-r dark:border-zinc-700 sticky left-0 bg-gray-50 dark:bg-zinc-800 z-30">Task</div>
           {days.map(day => (
             <div key={day.toISOString()} className="p-2 text-center text-xs border-r border-gray-100 dark:border-zinc-700 last:border-r-0">
               <div className="font-semibold">{format(day, 'd')}</div>
