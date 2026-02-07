@@ -5,6 +5,7 @@ import { useState } from 'react'
 
 export default function NewProjectForm() {
   const [isOpen, setIsOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   if (!isOpen) {
     return (
@@ -21,10 +22,16 @@ export default function NewProjectForm() {
     <div className="p-6 border rounded-lg bg-gray-50 dark:bg-zinc-900 dark:border-zinc-700">
       <h3 className="text-lg font-semibold mb-4">New Project</h3>
       <form action={async (formData) => {
-          await createProject(formData)
-          setIsOpen(false)
+          const result = await createProject(formData)
+          if (result && result.error) {
+            setError(result.error)
+          } else {
+            setError(null)
+            setIsOpen(false)
+          }
         }} className="flex flex-col gap-4"
       >
+        {error && <div className="text-red-500 text-sm">{error}</div>}
         <input
           name="name"
           placeholder="Project Name"
@@ -45,7 +52,10 @@ export default function NewProjectForm() {
           </button>
           <button
             type="button"
-            onClick={() => setIsOpen(false)}
+            onClick={() => {
+              setIsOpen(false)
+              setError(null)
+            }}
             className="px-4 py-2 bg-gray-300 text-black rounded hover:bg-gray-400 dark:bg-zinc-700 dark:text-white"
           >
             Cancel
