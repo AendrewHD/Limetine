@@ -1,6 +1,7 @@
 import { getProject, getTaskStatuses } from '@/app/actions'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { getProject } from '@/app/actions'
 import GanttChart from '@/components/GanttChart'
 import NewTaskForm from '@/components/NewTaskForm'
 import ExportProjectButton from '@/components/ExportProjectButton'
