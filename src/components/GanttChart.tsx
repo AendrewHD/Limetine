@@ -29,11 +29,6 @@ export default function GanttChart({ project }: GanttChartProps) {
 
   const tasks = project.tasks
 
-  if (tasks.length === 0 && !isDragging) {
-    // We want to show the grid even if empty to allow dragging, but maybe with a placeholder or empty state
-    // For now, let's just initialize range around today if empty
-  }
-
   // Determine date range
   let minDate: Date, maxDate: Date
   if (tasks.length > 0) {
