@@ -219,5 +219,6 @@ export default function GanttChart({ project, initialStartDate, totalDays }: Gan
         </div>
       </div>
     </div>
+    </div>
   )
 }
