@@ -230,5 +230,6 @@ export default function GanttChart({ project }: GanttChartProps) {
         </div>
       </div>
     </div>
+    </div>
   )
 }
