@@ -8,20 +8,26 @@ interface GanttChartProps {
 }
 
 export default function GanttChart({ tasks }: GanttChartProps) {
-  if (tasks.length === 0) {
-    return <div className="text-center p-10 text-gray-500">No tasks found. Add a task to see the timeline.</div>
+  // Determine date range
+  let viewStartDate: Date
+  let viewEndDate: Date
+
+  if (tasks.length > 0) {
+    const dates = tasks.flatMap(t => [new Date(t.startDate), new Date(t.endDate)])
+    const minDate = startOfDay(min(dates))
+    const maxDate = startOfDay(max(dates))
+
+    // Add some buffer
+    viewStartDate = addDays(minDate, -2)
+    viewEndDate = addDays(maxDate, 5)
+  } else {
+    // Default view range if no tasks exist
+    const today = startOfDay(new Date())
+    viewStartDate = addDays(today, -2)
+    viewEndDate = addDays(today, 14)
   }
 
-  // Determine date range
-  const dates = tasks.flatMap(t => [new Date(t.startDate), new Date(t.endDate)])
-  const minDate = startOfDay(min(dates))
-  const maxDate = startOfDay(max(dates))
-
-  // Add some buffer
-  const viewStartDate = addDays(minDate, -2)
-  const viewEndDate = addDays(maxDate, 5)
   const totalDays = differenceInDays(viewEndDate, viewStartDate) + 1
-
   const days = Array.from({ length: totalDays }, (_, i) => addDays(viewStartDate, i))
 
   return (
@@ -39,7 +45,7 @@ export default function GanttChart({ tasks }: GanttChartProps) {
         </div>
 
         {/* Rows */}
-        <div className="relative">
+        <div className="relative min-h-[100px]">
              {/* Grid background lines */}
             <div className="absolute inset-0 grid pointer-events-none" style={{ gridTemplateColumns: `200px repeat(${totalDays}, minmax(40px, 1fr))` }}>
                 <div className="border-r dark:border-zinc-700 bg-white dark:bg-zinc-900 sticky left-0 z-10"></div>
@@ -47,6 +53,12 @@ export default function GanttChart({ tasks }: GanttChartProps) {
                     <div key={day.toISOString()} className="border-r border-dashed border-gray-100 dark:border-zinc-800 last:border-r-0"></div>
                 ))}
             </div>
+
+            {tasks.length === 0 && (
+                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <span className="text-gray-400 text-sm">No tasks created yet</span>
+                 </div>
+            )}
 
             {tasks.map(task => {
               const taskStart = startOfDay(new Date(task.startDate))
