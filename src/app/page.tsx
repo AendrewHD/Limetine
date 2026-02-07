@@ -28,11 +28,6 @@ export default async function Home() {
             totalDays={totalDays}
           />
         </section>
-
-        <section>
-          <h2 className="text-2xl font-semibold mb-6">Your Projects</h2>
-          <ProjectList projects={projects} />
-        </section>
       </div>
     </main>
   )
