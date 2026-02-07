@@ -3,7 +3,6 @@
 import { format, differenceInDays, addDays, startOfDay, min, max } from 'date-fns'
 import { Project, Task } from '@prisma/client'
 import { generateGlobalPDF } from '@/lib/pdfGenerator'
-import { useDraggableScroll } from '@/hooks/useDraggableScroll'
 
 type ProjectWithTasks = Project & { tasks: Task[] }
 
@@ -50,14 +49,7 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
             Export PDF
           </button>
       </div>
-      <div
-        ref={ref}
-        onMouseDown={onMouseDown}
-        onMouseUp={onMouseUp}
-        onMouseLeave={onMouseLeave}
-        onMouseMove={onMouseMove}
-        className="overflow-x-auto overflow-y-auto max-h-[80vh] border rounded-lg dark:border-zinc-700 bg-white dark:bg-zinc-900 no-scrollbar"
-      >
+      <div className="overflow-x-auto border rounded-lg dark:border-zinc-700 bg-white dark:bg-zinc-900">
         <div className="min-w-[800px]">
           {/* Header */}
           <div className="grid border-b dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 sticky top-0 z-20" style={{ gridTemplateColumns: `200px repeat(${totalDays}, minmax(40px, 1fr))` }}>
