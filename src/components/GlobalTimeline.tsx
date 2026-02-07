@@ -10,30 +10,28 @@ interface GlobalTimelineProps {
 }
 
 export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
-  const projectsWithTasks = projects.filter(p => p.tasks.length > 0)
   const allTasks = projects.flatMap(p => p.tasks)
 
-  if (allTasks.length === 0) {
-    return (
-      <div className="space-y-4">
-        <h2 className="text-2xl font-semibold">Global Timeline</h2>
-        <div className="border rounded-lg dark:border-zinc-700 p-8 text-center bg-white dark:bg-zinc-900">
-          <p className="text-gray-500">No tasks found across any projects.</p>
-        </div>
-      </div>
-    )
+  // Determine date range
+  let viewStartDate: Date
+  let viewEndDate: Date
+
+  if (allTasks.length > 0) {
+    const dates = allTasks.flatMap(t => [new Date(t.startDate), new Date(t.endDate)])
+    const minDate = startOfDay(min(dates))
+    const maxDate = startOfDay(max(dates))
+
+    // Add some buffer
+    viewStartDate = addDays(minDate, -2)
+    viewEndDate = addDays(maxDate, 5)
+  } else {
+    // Default view range if no tasks exist
+    const today = startOfDay(new Date())
+    viewStartDate = addDays(today, -2)
+    viewEndDate = addDays(today, 14)
   }
 
-  // Determine date range
-  const dates = allTasks.flatMap(t => [new Date(t.startDate), new Date(t.endDate)])
-  const minDate = startOfDay(min(dates))
-  const maxDate = startOfDay(max(dates))
-
-  // Add some buffer
-  const viewStartDate = addDays(minDate, -2)
-  const viewEndDate = addDays(maxDate, 5)
   const totalDays = differenceInDays(viewEndDate, viewStartDate) + 1
-
   const days = Array.from({ length: totalDays }, (_, i) => addDays(viewStartDate, i))
 
   return (
@@ -62,7 +60,7 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
                   ))}
               </div>
 
-              {projectsWithTasks.map(project => (
+              {projects.map(project => (
                 <div key={project.id} className="contents">
                   {/* Project Header Row */}
                   <div className="grid items-center relative h-10 bg-gray-50/50 dark:bg-zinc-800/30" style={{ gridTemplateColumns: `200px repeat(${totalDays}, minmax(40px, 1fr))` }}>
