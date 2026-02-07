@@ -48,12 +48,3 @@ model Task {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
-
-model TaskStatus {
-  id        String   @id @default(cuid())
-  value     String   @unique
-  label     String
-  color     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}

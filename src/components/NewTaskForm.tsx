@@ -3,15 +3,9 @@
 import { createTask } from '@/app/actions'
 import { useState } from 'react'
 
-type Status = {
-  id: string
-  label: string
-  value: string
-  color: string | null
-}
-
-export default function NewTaskForm({ projectId, statuses = [] }: { projectId: string, statuses?: Status[] }) {
+export default function NewTaskForm({ projectId }: { projectId: string }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   if (!isOpen) {
     return (
@@ -28,10 +22,16 @@ export default function NewTaskForm({ projectId, statuses = [] }: { projectId: s
     <div className="p-6 border rounded-lg bg-gray-50 dark:bg-zinc-900 dark:border-zinc-700">
       <h3 className="text-lg font-semibold mb-4">New Task</h3>
       <form action={async (formData) => {
-          await createTask(formData)
-          setIsOpen(false)
+          const result = await createTask(formData)
+          if (result && result.error) {
+            setError(result.error)
+          } else {
+            setError(null)
+            setIsOpen(false)
+          }
         }} className="flex flex-col gap-4"
       >
+        {error && <div className="text-red-500 text-sm">{error}</div>}
         <input type="hidden" name="projectId" value={projectId} />
         <input
           name="name"
@@ -60,13 +60,9 @@ export default function NewTaskForm({ projectId, statuses = [] }: { projectId: s
             </div>
         </div>
         <select name="status" className="p-2 border rounded dark:bg-zinc-800 dark:border-zinc-600">
-            {statuses.length > 0 ? (
-                statuses.map(status => (
-                    <option key={status.id} value={status.value}>{status.label}</option>
-                ))
-            ) : (
-                <option value="TODO">To Do</option>
-            )}
+            <option value="TODO">To Do</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="DONE">Done</option>
         </select>
 
         <div className="flex gap-2 mt-2">
@@ -78,7 +74,10 @@ export default function NewTaskForm({ projectId, statuses = [] }: { projectId: s
           </button>
           <button
             type="button"
-            onClick={() => setIsOpen(false)}
+            onClick={() => {
+              setIsOpen(false)
+              setError(null)
+            }}
             className="px-4 py-2 bg-gray-300 text-black rounded hover:bg-gray-400 dark:bg-zinc-700 dark:text-white"
           >
             Cancel
