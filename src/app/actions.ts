@@ -23,7 +23,7 @@ export async function createProject(formData: FormData) {
 export async function getProjects() {
   return await prisma.project.findMany({
     orderBy: { createdAt: 'desc' },
-    include: { tasks: true }
+    include: { tasks: { include: { milestones: true } } }
   })
 }
 
