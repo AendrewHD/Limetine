@@ -1,12 +1,12 @@
 import ProjectDropdown from '@/components/ProjectDropdown'
 import GlobalTimeline from '@/components/GlobalTimeline'
-import { getProjects } from '@/app/actions'
+import { getTimelineData } from '@/app/actions'
 import { getTimelineRange } from '@/lib/timeline-utils'
 
 export const dynamic = 'force-dynamic'
 
 export default async function Home() {
-  const projects = await getProjects()
+  const projects = await getTimelineData()
   const allTasks = projects.flatMap(p => p.tasks)
   const { viewStartDate, totalDays } = getTimelineRange(allTasks)
 
