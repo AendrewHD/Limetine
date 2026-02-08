@@ -11,6 +11,7 @@ model Timeline {
   id          String   @id @default(cuid())
   title       String
   description String?
+  color       String?
   events      Event[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -20,6 +21,7 @@ model Event {
   id          String   @id @default(cuid())
   title       String
   description String?
+  color       String?
   date        DateTime
   timelineId  String
   timeline    Timeline @relation(fields: [timelineId], references: [id], onDelete: Cascade)
@@ -31,6 +33,7 @@ model Project {
   id          String   @id @default(cuid())
   name        String
   description String?
+  color       String?
   tasks       Task[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -40,6 +43,7 @@ model Task {
   id          String   @id @default(cuid())
   name        String
   description String?
+  color       String?
   startDate   DateTime
   endDate     DateTime
   status      String   @default("TODO")

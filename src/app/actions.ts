@@ -2,17 +2,33 @@
 
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { cache } from 'react'
+import { getRandomColor } from '@/lib/colors'
+
+const MAX_NAME_LENGTH = 255
+const MAX_DESCRIPTION_LENGTH = 5000
 
 export async function createProject(formData: FormData) {
   const name = formData.get('name') as string
   const description = formData.get('description') as string
 
   if (!name) return { error: 'Name is required' }
+  if (name.length > MAX_NAME_LENGTH) {
+    return { error: `Name must be less than ${MAX_NAME_LENGTH} characters` }
+  }
+  if (description && description.length > MAX_DESCRIPTION_LENGTH) {
+    return { error: `Description must be less than ${MAX_DESCRIPTION_LENGTH} characters` }
+  }
+
+  const projects = await prisma.project.findMany({ select: { color: true } })
+  const usedColors = projects.map(p => p.color).filter(Boolean) as string[]
+  const color = getRandomColor(usedColors)
 
   await prisma.project.create({
     data: {
       name,
       description,
+      color,
     },
   })
 
@@ -34,12 +50,12 @@ export async function getProjects() {
   })
 }
 
-export async function getProject(id: string) {
+export const getProject = cache(async (id: string) => {
   return await prisma.project.findUnique({
     where: { id },
     include: { tasks: { orderBy: { startDate: 'asc' } } },
   })
-}
+})
 
 export async function createTask(formData: FormData) {
   const name = formData.get('name') as string
@@ -51,6 +67,12 @@ export async function createTask(formData: FormData) {
 
   if (!name || !startDate || !endDate || !projectId) {
     return { error: 'Missing required fields' }
+  }
+  if (name.length > MAX_NAME_LENGTH) {
+    return { error: `Name must be less than ${MAX_NAME_LENGTH} characters` }
+  }
+  if (description && description.length > MAX_DESCRIPTION_LENGTH) {
+    return { error: `Description must be less than ${MAX_DESCRIPTION_LENGTH} characters` }
   }
 
   await prisma.task.create({
@@ -65,6 +87,16 @@ export async function createTask(formData: FormData) {
   })
 
   revalidatePath(`/projects/${projectId}`)
+  revalidatePath('/')
+}
+
+export async function updateTask(id: string, projectId: string, data: { startDate?: Date; endDate?: Date; name?: string; status?: string }) {
+  await prisma.task.update({
+    where: { id },
+    data,
+  })
+  revalidatePath(`/projects/${projectId}`)
+  revalidatePath('/')
 }
 
 export async function deleteTask(id: string, projectId: string) {
@@ -72,4 +104,5 @@ export async function deleteTask(id: string, projectId: string) {
     where: { id },
   })
   revalidatePath(`/projects/${projectId}`)
+  revalidatePath('/')
 }
