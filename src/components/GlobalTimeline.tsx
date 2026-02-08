@@ -125,7 +125,7 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
                             return (
                                 <div
                                     key={milestone.id}
-                                    className="flex flex-col items-center justify-center z-20 pointer-events-auto"
+                                    className="flex items-center justify-center z-20 pointer-events-auto absolute top-1/2 mt-[2px] w-5 h-5"
                                     style={{
                                         gridColumnStart: offset,
                                         gridColumnEnd: 'span 1',
@@ -135,7 +135,7 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
                                     <svg viewBox="0 0 16 16" className="w-5 h-5 overflow-visible drop-shadow-sm">
                                         {renderShape(milestone.shape)}
                                     </svg>
-                                    <span className="text-[10px] leading-none font-medium bg-white/90 dark:bg-zinc-900/90 px-1 py-0.5 rounded shadow-sm whitespace-nowrap border dark:border-zinc-700">
+                                    <span className="absolute left-full ml-1 text-[10px] leading-none font-medium bg-white/90 dark:bg-zinc-900/90 px-1 py-0.5 rounded shadow-sm whitespace-nowrap border dark:border-zinc-700">
                                         {milestone.name}
                                     </span>
                                 </div>
