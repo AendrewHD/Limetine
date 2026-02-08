@@ -43,6 +43,14 @@ export async function getTimelineData() {
   })
 }
 
+// Optimized for list view: fetches only task counts
+export async function getProjects() {
+  return await prisma.project.findMany({
+    orderBy: { createdAt: 'desc' },
+    include: { _count: { select: { tasks: true } } }
+  })
+}
+
 export const getProject = cache(async (id: string) => {
   return await prisma.project.findUnique({
     where: { id },
