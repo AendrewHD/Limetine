@@ -1,22 +1,24 @@
 'use client'
 
-import { format, differenceInDays, addDays, startOfDay, min, max } from 'date-fns'
+import { format, differenceInDays, addDays, startOfDay, min, max, subDays, isSameDay } from 'date-fns'
 import { Task, Milestone, Project } from '@prisma/client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useLayoutEffect } from 'react'
 import { updateTask } from '@/app/actions'
 import TaskCreationModal from './TaskCreationModal'
 import MilestoneCreationModal from './MilestoneCreationModal'
+
+import jsPDF from 'jspdf'
 
 type TaskWithMilestones = Task & {
   milestones: Milestone[]
 }
 
 interface GanttChartProps {
+  today?: Date
   tasks: TaskWithMilestones[]
   project: Project
 }
 
-const COLUMN_WIDTH = 50
 const SIDEBAR_WIDTH = 200
 
 const renderShape = (shape: string) => {
@@ -32,46 +34,119 @@ const renderShape = (shape: string) => {
     }
 }
 
-export default function GanttChart({ tasks, project }: GanttChartProps) {
+export default function GanttChart({ tasks, project, today = new Date() } : GanttChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const centerDateRef = useRef<Date | null>(null)
 
-  // Interactive State
-  const [isDragging, setIsDragging] = useState(false)
+  // -- View State --
+  const [viewMode, setViewMode] = useState<'Week' | 'Month' | '3-Month' | 'Year'>('Month')
+
+  // Calculate column width based on view mode
+  const getColumnWidth = (mode: string) => {
+      switch(mode) {
+          case 'Week': return 100;
+          case 'Month': return 50;
+          case '3-Month': return 30;
+          case 'Year': return 10;
+          default: return 50;
+      }
+  }
+  const COLUMN_WIDTH = getColumnWidth(viewMode)
+
+  // Initialize dates with a buffer around tasks or today
+  const [viewStartDate, setViewStartDate] = useState<Date>(() => {
+      const dates = tasks.flatMap(t => [new Date(t.startDate), new Date(t.endDate), ...t.milestones.map(m => new Date(m.date))])
+      const minDate = dates.length > 0 ? min(dates) : today
+      return startOfDay(addDays(minDate, -15))
+  })
+  const [viewEndDate, setViewEndDate] = useState<Date>(() => {
+      const dates = tasks.flatMap(t => [new Date(t.startDate), new Date(t.endDate), ...t.milestones.map(m => new Date(m.date))])
+      const maxDate = dates.length > 0 ? max(dates) : addDays(today, 7)
+      return startOfDay(addDays(maxDate, 15))
+  })
+
+  const totalDays = differenceInDays(viewEndDate, viewStartDate) + 1
+  const days = Array.from({ length: totalDays }, (_, i) => addDays(viewStartDate, i))
+
+      // Auto-expand range and Maintain Center Date
+  useLayoutEffect(() => {
+      if (viewMode === 'Year' || viewMode === '3-Month') {
+          const currentDuration = differenceInDays(viewEndDate, viewStartDate)
+          if (currentDuration < 365) {
+              const center = addDays(viewStartDate, Math.floor(currentDuration / 2))
+              setViewStartDate(subDays(center, 365))
+              setViewEndDate(addDays(center, 365))
+          }
+      }
+
+      // Restore scroll position to center date
+      if (centerDateRef.current && containerRef.current) {
+          const daysDiff = differenceInDays(centerDateRef.current, viewStartDate)
+          const newScrollLeft = daysDiff * COLUMN_WIDTH - containerRef.current.clientWidth / 2
+          containerRef.current.scrollLeft = newScrollLeft
+          centerDateRef.current = null
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, COLUMN_WIDTH])
+
+  const gridTemplateColumns = `${SIDEBAR_WIDTH}px repeat(${totalDays}, ${COLUMN_WIDTH}px)`
+
+  // -- Interaction State --
+  const [isDragging, setIsDragging] = useState(false) // Creating task
   const [dragStart, setDragStart] = useState<Date | null>(null)
   const [dragEnd, setDragEnd] = useState<Date | null>(null)
+
+  const [isPanning, setIsPanning] = useState(false)
+  const [panStartX, setPanStartX] = useState(0)
+  const [panScrollLeft, setPanScrollLeft] = useState(0)
+
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [isMilestoneModalOpen, setIsMilestoneModalOpen] = useState(false)
-
   const [clickedTaskId, setClickedTaskId] = useState<string | null>(null)
 
   const [resizingTask, setResizingTask] = useState<string | null>(null)
   const [resizeEdge, setResizeEdge] = useState<'start' | 'end' | null>(null)
   const [resizeCurrentDate, setResizeCurrentDate] = useState<Date | null>(null)
 
-  // Determine date range
-  const dates = tasks.flatMap(t => [
-      new Date(t.startDate),
-      new Date(t.endDate),
-      ...t.milestones.map(m => new Date(m.date))
-  ])
+  // -- Infinite Scroll & Logic --
 
-  const minDate = dates.length > 0 ? startOfDay(min(dates)) : startOfDay(new Date())
-  const maxDate = dates.length > 0 ? startOfDay(max(dates)) : addDays(startOfDay(new Date()), 7)
+  // Adjust scroll position when viewStartDate changes (adding days to left)
+  const prevStartRef = useRef(viewStartDate)
+  useLayoutEffect(() => {
+      if (prevStartRef.current > viewStartDate && containerRef.current) {
+          const addedDays = differenceInDays(prevStartRef.current, viewStartDate)
+          containerRef.current.scrollLeft += addedDays * COLUMN_WIDTH
+      }
+      prevStartRef.current = viewStartDate
+  }, [viewStartDate, COLUMN_WIDTH])
 
-  // Add some buffer
-  const viewStartDate = addDays(minDate, -5)
-  const viewEndDate = addDays(maxDate, 10)
-  const totalDays = differenceInDays(viewEndDate, viewStartDate) + 1
+  const jumpToToday = () => {
+      if (!containerRef.current) return
+      const targetDate = startOfDay(today)
 
-  const days = Array.from({ length: totalDays }, (_, i) => addDays(viewStartDate, i))
-  const gridTemplateColumns = `${SIDEBAR_WIDTH}px repeat(${totalDays}, ${COLUMN_WIDTH}px)`
+      // Ensure target is within view with buffer
+      if (targetDate < viewStartDate || targetDate > viewEndDate) {
+          setViewStartDate(addDays(targetDate, -30))
+          setViewEndDate(addDays(targetDate, 30))
+          // Scroll will need to wait for render... but effect below handles scrollLeft adjustment for start date change.
+          // However, we want to center specifically on today.
+          // Let's rely on effect to keep relative position? No, `prevStartRef` effect shifts scroll to keep *visual* position same.
+          // If we jump, we want to change visual position.
+
+          // Let's just set a flag or ref to force center on next render?
+          centerDateRef.current = targetDate
+          return
+      }
+
+      const daysDiff = differenceInDays(targetDate, viewStartDate)
+      const scrollPos = daysDiff * COLUMN_WIDTH - containerRef.current.clientWidth / 2 + COLUMN_WIDTH / 2
+      containerRef.current.scrollTo({ left: scrollPos, behavior: 'smooth' })
+  }
 
   const handleMouseDown = (e: React.MouseEvent, taskId?: string) => {
     // Check if clicking resize handle
     if ((e.target as HTMLElement).getAttribute('data-handle')) return
 
-    // Only left click
-    if (e.button !== 0) return;
     if (!containerRef.current) return;
 
     const rect = containerRef.current.getBoundingClientRect()
@@ -80,16 +155,34 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
 
     if (x < 0) return
 
-    const dayIndex = Math.floor(x / COLUMN_WIDTH)
-    const date = addDays(viewStartDate, dayIndex)
+    // Middle Mouse Button (1) -> Pan
+    if (e.button === 1) {
+        e.preventDefault(); // Prevent browser auto-scroll
+        setIsPanning(true)
+        setPanStartX(e.clientX)
+        setPanScrollLeft(containerRef.current.scrollLeft)
+        return;
+    }
 
-    setIsDragging(true)
-    setDragStart(date)
-    setDragEnd(date)
-    if (taskId) {
-        setClickedTaskId(taskId)
-    } else {
-        setClickedTaskId(null)
+    // Left Mouse Button (0) -> Create Task or Drag Task (if taskId provided)
+    if (e.button === 0) {
+        if (taskId) {
+             // Task Clicked
+             const dayIndex = Math.floor(x / COLUMN_WIDTH)
+             const date = addDays(viewStartDate, dayIndex)
+             setIsDragging(true)
+             setDragStart(date)
+             setDragEnd(date)
+             setClickedTaskId(taskId)
+        } else {
+             // Background Clicked -> Create Task (Default Left Drag)
+             const dayIndex = Math.floor(x / COLUMN_WIDTH)
+             const date = addDays(viewStartDate, dayIndex)
+             setIsDragging(true)
+             setDragStart(date)
+             setDragEnd(date)
+             setClickedTaskId(null)
+        }
     }
   }
 
@@ -102,7 +195,28 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
   }
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if ((!isDragging && !resizingTask) || !containerRef.current) return
+    if (!containerRef.current) return
+
+    if (isPanning) {
+        const dx = e.clientX - panStartX
+        containerRef.current.scrollLeft = panScrollLeft - dx
+
+        // Infinite Scroll Logic
+        if (containerRef.current.scrollLeft < 500) {
+            setViewStartDate(prev => subDays(prev, 10))
+            setPanScrollLeft(prev => prev + (10 * COLUMN_WIDTH)) // Adjust stored start to avoid jump
+             // We also need to adjust actual scrollLeft?
+             // The useLayoutEffect handles the visual jump on render,
+             // but here we are in the middle of a drag.
+             // If we update state, render happens.
+        }
+        if (containerRef.current.scrollWidth - (containerRef.current.scrollLeft + containerRef.current.clientWidth) < 500) {
+            setViewEndDate(prev => addDays(prev, 10))
+        }
+        return
+    }
+
+    if ((!isDragging && !resizingTask)) return
 
     const rect = containerRef.current.getBoundingClientRect()
     const scrollLeft = containerRef.current.scrollLeft
@@ -119,13 +233,18 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
   }
 
   const handleMouseUp = async () => {
+    if (isPanning) {
+        setIsPanning(false)
+        return
+    }
+
     if (isDragging) {
       setIsDragging(false)
 
-      if (dragStart && dragEnd && dragStart.getTime() === dragEnd.getTime()) {
+      if (dragStart && dragEnd && isSameDay(dragStart, dragEnd)) {
           // Single click -> Milestone
           setIsMilestoneModalOpen(true)
-      } else if (dragStart && dragEnd && dragStart.getTime() !== dragEnd.getTime()) {
+      } else if (dragStart && dragEnd && !isSameDay(dragStart, dragEnd)) {
           // Drag -> Task
           setIsTaskModalOpen(true)
       }
@@ -139,11 +258,79 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const projectColor = (project as any).color || '#3b82f6';
+    const handleExportPDF = async () => {
+      if (!containerRef.current) return
 
-  return (
-    <div>
+      try {
+          const domToImage = (await import('dom-to-image-more')).default
+          // Temporarily set overflow to visible to capture full width
+          const originalOverflow = containerRef.current.style.overflow
+          containerRef.current.style.overflow = 'visible'
+
+          const dataUrl = await domToImage.toPng(containerRef.current, {
+              bgcolor: '#ffffff',
+              width: containerRef.current.scrollWidth,
+              height: containerRef.current.scrollHeight
+          })
+
+          containerRef.current.style.overflow = originalOverflow
+
+          const pdf = new jsPDF({
+              orientation: 'landscape',
+              unit: 'px',
+              format: [containerRef.current.scrollWidth, containerRef.current.scrollHeight]
+          })
+          pdf.addImage(dataUrl, 'PNG', 0, 0, containerRef.current.scrollWidth, containerRef.current.scrollHeight)
+          pdf.save('gantt-chart.pdf')
+      } catch (error) {
+          console.error("PDF Export failed:", error)
+          alert("Failed to export PDF. See console for details.")
+      }
+  }
+
+  const projectColor = (project as { color?: string }).color || '#3b82f6';
+
+  const handleViewModeChange = (mode: 'Week' | 'Month' | '3-Month' | 'Year') => {
+      if (containerRef.current) {
+          const centerOffset = containerRef.current.scrollLeft + containerRef.current.clientWidth / 2
+          const centerIndex = Math.floor(centerOffset / COLUMN_WIDTH)
+          centerDateRef.current = addDays(viewStartDate, centerIndex)
+      }
+      setViewMode(mode)
+  }
+return (
+    <div className="space-y-4">
+       {/* Toolbar */}
+       <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white dark:bg-zinc-900 border rounded-lg dark:border-zinc-700">
+          <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-500">Zoom:</span>
+              {(['Week', 'Month', '3-Month', 'Year'] as const).map(mode => (
+                  <button
+                    key={mode}
+                    onClick={() => handleViewModeChange(mode)}
+                    className={`px-3 py-1 text-xs rounded-md border transition-colors ${viewMode === mode ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 font-semibold' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50 border-transparent'}`}
+                  >
+                      {mode}
+                  </button>
+              ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+              <button
+                onClick={jumpToToday}
+                className="px-3 py-1 text-xs font-medium bg-zinc-100 dark:bg-zinc-800 rounded-md border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+              >
+                  Today
+              </button>
+              <button
+                onClick={handleExportPDF}
+                 className="px-3 py-1 text-xs font-medium bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+              >
+                  Export PDF
+              </button>
+          </div>
+       </div>
+
        <TaskCreationModal
         isOpen={isTaskModalOpen}
         onClose={() => {
@@ -172,14 +359,15 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
 
       <div
         ref={containerRef}
-        className="overflow-x-auto border rounded-lg dark:border-zinc-700 bg-white dark:bg-zinc-900 select-none"
+        className="overflow-x-auto border rounded-lg dark:border-zinc-700 bg-white dark:bg-zinc-900 select-none scrollbar-hide"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', cursor: isPanning ? 'grabbing' : 'crosshair' }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={() => { if(isDragging || resizingTask) handleMouseUp() }}
+        onMouseLeave={() => { if(isDragging || resizingTask || isPanning) handleMouseUp() }}
       >
-        <div className="min-w-[800px]">
+        <div className="min-w-full inline-block">
           {/* Header */}
-          <div className="grid border-b dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800" style={{ gridTemplateColumns }}>
+          <div className="grid border-b dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 sticky top-0 z-30" style={{ gridTemplateColumns }}>
             <div className="p-2 font-bold border-r dark:border-zinc-700 sticky left-0 bg-gray-50 dark:bg-zinc-800 z-20">Task</div>
             {days.map(day => (
               <div key={day.toISOString()} className="p-2 text-center text-xs border-r border-gray-100 dark:border-zinc-700 last:border-r-0" style={{ width: COLUMN_WIDTH }}>
@@ -201,12 +389,12 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
 
              {/* Drag Area / Ghost Task Row if dragging */}
             <div
-                className="grid items-center relative h-10 bg-gray-50/50 dark:bg-zinc-800/30 group cursor-crosshair border-b dark:border-zinc-800"
-                style={{ gridTemplateColumns }}
+                className="grid items-center relative h-10 bg-gray-50/50 dark:bg-zinc-800/30 group border-b dark:border-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-800/50"
+                style={{ gridTemplateColumns, cursor: isPanning ? 'grabbing' : 'crosshair' }}
                 onMouseDown={(e) => handleMouseDown(e)}
             >
-                 <div className="p-2 font-semibold text-sm border-r dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 sticky left-0 z-10 w-[200px] h-full flex items-center truncate text-gray-400 italic">
-                    Drag here to create...
+                 <div className="p-2 font-semibold text-sm border-r dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 sticky left-0 z-10 w-[200px] h-full flex items-center truncate text-gray-400 italic pointer-events-none">
+                    {isPanning ? "Panning..." : "Drag to create (Left)"}
                  </div>
 
                  {isDragging && dragStart && dragEnd && (
@@ -218,7 +406,7 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
                             gridColumnEnd: `span ${differenceInDays(dragStart < dragEnd ? dragEnd : dragStart, dragStart < dragEnd ? dragStart : dragEnd) + 1}`
                         }}
                     >
-                        {dragStart.getTime() !== dragEnd.getTime() ? "New Task" : "New Milestone"}
+                        {differenceInDays(dragEnd, dragStart) === 0 ? "New Milestone" : "New Task"}
                     </div>
                  )}
             </div>
@@ -236,6 +424,9 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
               const effectiveStart = taskStart < taskEnd ? taskStart : taskEnd
               const effectiveEnd = taskStart < taskEnd ? taskEnd : taskStart
 
+              // Skip rendering if task is outside view
+              if (effectiveEnd < viewStartDate || effectiveStart > viewEndDate) return null
+
               const startOffset = differenceInDays(effectiveStart, viewStartDate) + 2 // +1 for name col, +1 for 1-based index
               const duration = differenceInDays(effectiveEnd, effectiveStart) + 1 // Inclusive
 
@@ -252,7 +443,7 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
 
                   {/* Task Bar */}
                   <div
-                    className="rounded-md shadow-sm h-8 mx-1 flex items-center justify-center text-xs text-white whitespace-nowrap px-2 z-0 relative group"
+                    className="rounded-md shadow-sm h-8 mx-1 flex items-center justify-center text-xs text-white whitespace-nowrap px-2 z-0 relative group cursor-default"
                     style={{
                       backgroundColor: projectColor,
                       gridColumnStart: startOffset,
@@ -277,6 +468,9 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
                   {/* Milestones */}
                   {task.milestones.map(milestone => {
                     const milestoneDate = startOfDay(new Date(milestone.date))
+
+                    if (milestoneDate < viewStartDate || milestoneDate > viewEndDate) return null
+
                     const offset = differenceInDays(milestoneDate, viewStartDate) + 2
 
                     if (offset < 2 || offset > totalDays + 1) return null
@@ -303,9 +497,9 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
                 </div>
               )
             })}
+    </div>
         </div>
       </div>
-    </div>
     </div>
   )
 }
