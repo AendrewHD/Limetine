@@ -6,7 +6,7 @@ import { useState, useRef, useLayoutEffect } from 'react'
 import { updateTask } from '@/app/actions'
 import TaskCreationModal from './TaskCreationModal'
 import MilestoneCreationModal from './MilestoneCreationModal'
-import domToImage from 'dom-to-image-more'
+
 import jsPDF from 'jspdf'
 
 type TaskWithMilestones = Task & {
@@ -67,7 +67,6 @@ export default function GanttChart({ tasks, project, today = new Date() } : Gant
 
   const totalDays = differenceInDays(viewEndDate, viewStartDate) + 1
   const days = Array.from({ length: totalDays }, (_, i) => addDays(viewStartDate, i))
-
 
       // Auto-expand range and Maintain Center Date
   useLayoutEffect(() => {
@@ -263,6 +262,7 @@ export default function GanttChart({ tasks, project, today = new Date() } : Gant
       if (!containerRef.current) return
 
       try {
+          const domToImage = (await import('dom-to-image-more')).default
           // Temporarily set overflow to visible to capture full width
           const originalOverflow = containerRef.current.style.overflow
           containerRef.current.style.overflow = 'visible'
@@ -289,7 +289,6 @@ export default function GanttChart({ tasks, project, today = new Date() } : Gant
   }
 
   const projectColor = (project as { color?: string }).color || '#3b82f6';
-
 
   const handleViewModeChange = (mode: 'Week' | 'Month' | '3-Month' | 'Year') => {
       if (containerRef.current) {

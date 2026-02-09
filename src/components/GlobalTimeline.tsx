@@ -6,7 +6,7 @@ import { useState, useRef, useLayoutEffect } from 'react'
 import { updateTask } from '@/app/actions'
 import TaskCreationModal from './TaskCreationModal'
 import MilestoneCreationModal from './MilestoneCreationModal'
-import domToImage from 'dom-to-image-more'
+
 import jsPDF from 'jspdf'
 
 type TaskWithMilestones = Task & { milestones: Milestone[] }
@@ -15,7 +15,6 @@ type ProjectWithTasks = Project & { tasks: TaskWithMilestones[] }
 interface GlobalTimelineProps {
   today?: Date
   projects: ProjectWithTasks[]
-
 
 }
 
@@ -67,7 +66,6 @@ export default function GlobalTimeline({ projects, today = new Date() } : Global
 
   const totalDays = differenceInDays(viewEndDate, viewStartDate) + 1
   const days = Array.from({ length: totalDays }, (_, i) => addDays(viewStartDate, i))
-
 
       // Auto-expand range and Maintain Center Date
   useLayoutEffect(() => {
@@ -262,6 +260,7 @@ export default function GlobalTimeline({ projects, today = new Date() } : Global
       if (!containerRef.current) return
 
       try {
+          const domToImage = (await import('dom-to-image-more')).default
           // Temporarily set overflow to visible to capture full width
           const originalOverflow = containerRef.current.style.overflow
           containerRef.current.style.overflow = 'visible'
