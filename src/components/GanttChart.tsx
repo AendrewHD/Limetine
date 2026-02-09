@@ -65,6 +65,21 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
 
   const totalDays = differenceInDays(viewEndDate, viewStartDate) + 1
   const days = Array.from({ length: totalDays }, (_, i) => addDays(viewStartDate, i))
+
+
+      // Auto-expand range when switching to wider views
+  useLayoutEffect(() => {
+      if (viewMode === 'Year' || viewMode === '3-Month') {
+          const currentDuration = differenceInDays(viewEndDate, viewStartDate)
+          if (currentDuration < 365) {
+              const center = addDays(viewStartDate, Math.floor(currentDuration / 2))
+              setViewStartDate(subDays(center, 180))
+              setViewEndDate(addDays(center, 180))
+          }
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode])
+
   const gridTemplateColumns = `${SIDEBAR_WIDTH}px repeat(${totalDays}, ${COLUMN_WIDTH}px)`
 
   // -- Interaction State --
@@ -121,53 +136,41 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
     // Check if clicking resize handle
     if ((e.target as HTMLElement).getAttribute('data-handle')) return
 
-    // Only left click
-    if (e.button !== 0) return;
     if (!containerRef.current) return;
 
     const rect = containerRef.current.getBoundingClientRect()
     const scrollLeft = containerRef.current.scrollLeft
     const x = e.clientX - rect.left + scrollLeft - SIDEBAR_WIDTH
 
-    if (x < 0) return // Clicked in sidebar
+    if (x < 0) return
 
-    // LOGIC:
-    // If Task clicked -> Drag to create logic? No, task click usually does nothing unless resize handle.
-    // Actually, dragging ON a task currently does nothing in old code unless creating milestone.
-    // Let's keep existing logic: clicking on task initiates potential creation (maybe milestone).
-    // BUT we want Pan to be default on background.
+    // Middle Mouse Button (1) -> Pan
+    if (e.button === 1) {
+        e.preventDefault(); // Prevent browser auto-scroll
+        setIsPanning(true)
+        setPanStartX(e.clientX)
+        setPanScrollLeft(containerRef.current.scrollLeft)
+        return;
+    }
 
-    // Check if User wants to Create (Ctrl key or Shift key)
-    // Or if they clicked on a task (taskId provided) - if on task, we probably don't want to pan,
-    // we might want to move it (not implemented yet) or create milestone (existing).
-    // Current "Create Task" logic is: Drag on background.
-
-    const isCreateMode = e.ctrlKey || e.metaKey || e.shiftKey;
-
-    if (taskId) {
-         // Clicked on a task
-         // Proceed with old logic (Drag to create milestone or just click)
-         const dayIndex = Math.floor(x / COLUMN_WIDTH)
-         const date = addDays(viewStartDate, dayIndex)
-         setIsDragging(true)
-         setDragStart(date)
-         setDragEnd(date)
-         setClickedTaskId(taskId)
-    } else {
-        // Clicked on background
-        if (isCreateMode) {
-             // Create Task
+    // Left Mouse Button (0) -> Create Task or Drag Task (if taskId provided)
+    if (e.button === 0) {
+        if (taskId) {
+             // Task Clicked
+             const dayIndex = Math.floor(x / COLUMN_WIDTH)
+             const date = addDays(viewStartDate, dayIndex)
+             setIsDragging(true)
+             setDragStart(date)
+             setDragEnd(date)
+             setClickedTaskId(taskId)
+        } else {
+             // Background Clicked -> Create Task (Default Left Drag)
              const dayIndex = Math.floor(x / COLUMN_WIDTH)
              const date = addDays(viewStartDate, dayIndex)
              setIsDragging(true)
              setDragStart(date)
              setDragEnd(date)
              setClickedTaskId(null)
-        } else {
-             // Pan
-             setIsPanning(true)
-             setPanStartX(e.clientX)
-             setPanScrollLeft(containerRef.current.scrollLeft)
         }
     }
   }
@@ -247,24 +250,29 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
     const handleExportPDF = async () => {
       if (!containerRef.current) return
 
-      const options = {
-          scrollX: -window.scrollX,
-          scrollY: -window.scrollY,
-          windowWidth: document.documentElement.offsetWidth,
-          windowHeight: document.documentElement.offsetHeight
+      try {
+          const options = {
+              scrollX: -window.scrollX,
+              scrollY: -window.scrollY,
+              windowWidth: document.documentElement.offsetWidth,
+              windowHeight: document.documentElement.offsetHeight
+          }
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const canvas = await html2canvas(containerRef.current, options as any)
+
+          const imgData = canvas.toDataURL('image/png')
+          const pdf = new jsPDF({
+              orientation: 'landscape',
+              unit: 'px',
+              format: [canvas.width, canvas.height]
+          })
+          pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height)
+          pdf.save('gantt-chart.pdf')
+      } catch (error) {
+          console.error("PDF Export failed:", error)
+          alert("Failed to export PDF. See console for details.")
       }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const canvas = await html2canvas(containerRef.current, options as any)
-
-      const imgData = canvas.toDataURL('image/png')
-      const pdf = new jsPDF({
-          orientation: 'landscape',
-          unit: 'px',
-          format: [canvas.width, canvas.height]
-      })
-      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height)
-      pdf.save('gantt-chart.pdf')
   }
 
   const projectColor = (project as { color?: string }).color || '#3b82f6';
@@ -331,7 +339,7 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
       <div
         ref={containerRef}
         className="overflow-x-auto border rounded-lg dark:border-zinc-700 bg-white dark:bg-zinc-900 select-none scrollbar-hide"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', cursor: isPanning ? 'grabbing' : 'default' }}
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', cursor: isPanning ? 'grabbing' : 'crosshair' }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={() => { if(isDragging || resizingTask || isPanning) handleMouseUp() }}
@@ -361,11 +369,11 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
              {/* Drag Area / Ghost Task Row if dragging */}
             <div
                 className="grid items-center relative h-10 bg-gray-50/50 dark:bg-zinc-800/30 group border-b dark:border-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-800/50"
-                style={{ gridTemplateColumns, cursor: isPanning ? 'grabbing' : 'grab' }}
+                style={{ gridTemplateColumns, cursor: isPanning ? 'grabbing' : 'crosshair' }}
                 onMouseDown={(e) => handleMouseDown(e)}
             >
                  <div className="p-2 font-semibold text-sm border-r dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 sticky left-0 z-10 w-[200px] h-full flex items-center truncate text-gray-400 italic pointer-events-none">
-                    {isPanning ? "Panning..." : "Ctrl + Drag to create"}
+                    {isPanning ? "Panning..." : "Drag to create (Left)"}
                  </div>
 
                  {isDragging && dragStart && dragEnd && (

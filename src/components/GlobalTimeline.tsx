@@ -65,6 +65,21 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
 
   const totalDays = differenceInDays(viewEndDate, viewStartDate) + 1
   const days = Array.from({ length: totalDays }, (_, i) => addDays(viewStartDate, i))
+
+
+      // Auto-expand range when switching to wider views
+  useLayoutEffect(() => {
+      if (viewMode === 'Year' || viewMode === '3-Month') {
+          const currentDuration = differenceInDays(viewEndDate, viewStartDate)
+          if (currentDuration < 365) {
+              const center = addDays(viewStartDate, Math.floor(currentDuration / 2))
+              setViewStartDate(subDays(center, 180))
+              setViewEndDate(addDays(center, 180))
+          }
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode])
+
   const gridTemplateColumns = `${SIDEBAR_WIDTH}px repeat(${totalDays}, ${COLUMN_WIDTH}px)`
 
   // -- Interaction State --
@@ -115,8 +130,6 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
     // Check if clicking resize handle
     if ((e.target as HTMLElement).getAttribute('data-handle')) return
 
-    // Only left click
-    if (e.button !== 0) return;
     if (!containerRef.current) return;
 
     const rect = containerRef.current.getBoundingClientRect()
@@ -125,20 +138,28 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
 
     if (x < 0) return
 
-    const isCreateMode = e.ctrlKey || e.metaKey || e.shiftKey;
+    // Middle Mouse Button (1) -> Pan
+    if (e.button === 1) {
+        e.preventDefault(); // Prevent browser auto-scroll
+        setIsPanning(true)
+        setPanStartX(e.clientX)
+        setPanScrollLeft(containerRef.current.scrollLeft)
+        return;
+    }
 
-    if (taskId) {
-        // Task Clicked
-        const dayIndex = Math.floor(x / COLUMN_WIDTH)
-        const date = addDays(viewStartDate, dayIndex)
-        setIsDragging(true)
-        setDragProjectId(projectId || null)
-        setDragStart(date)
-        setDragEnd(date)
-        setClickedTaskId(taskId)
-    } else if (projectId) {
-        // Project Row Clicked
-        if (isCreateMode) {
+    // Left Mouse Button (0) -> Create Task or Drag Task (if taskId provided)
+    if (e.button === 0) {
+        if (taskId) {
+            // Task Clicked -> Drag Task (or Milestone creation if single click)
+            const dayIndex = Math.floor(x / COLUMN_WIDTH)
+            const date = addDays(viewStartDate, dayIndex)
+            setIsDragging(true)
+            setDragProjectId(projectId || null)
+            setDragStart(date)
+            setDragEnd(date)
+            setClickedTaskId(taskId)
+        } else if (projectId) {
+             // Project Row Clicked -> Create Task (Default Left Drag)
              const dayIndex = Math.floor(x / COLUMN_WIDTH)
              const date = addDays(viewStartDate, dayIndex)
              setIsDragging(true)
@@ -146,19 +167,7 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
              setDragStart(date)
              setDragEnd(date)
              setClickedTaskId(null)
-        } else {
-             // Pan
-             setIsPanning(true)
-             setPanStartX(e.clientX)
-             setPanScrollLeft(containerRef.current.scrollLeft)
         }
-    } else {
-        // Should not happen in current structure as grid rows cover everything,
-        // but if clicked on header or empty space?
-        // Header has its own click potentially.
-        setIsPanning(true)
-        setPanStartX(e.clientX)
-        setPanScrollLeft(containerRef.current.scrollLeft)
     }
   }
 
@@ -234,24 +243,29 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
     const handleExportPDF = async () => {
       if (!containerRef.current) return
 
-      const options = {
-          scrollX: -window.scrollX,
-          scrollY: -window.scrollY,
-          windowWidth: document.documentElement.offsetWidth,
-          windowHeight: document.documentElement.offsetHeight
+      try {
+          const options = {
+              scrollX: -window.scrollX,
+              scrollY: -window.scrollY,
+              windowWidth: document.documentElement.offsetWidth,
+              windowHeight: document.documentElement.offsetHeight
+          }
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const canvas = await html2canvas(containerRef.current, options as any)
+
+          const imgData = canvas.toDataURL('image/png')
+          const pdf = new jsPDF({
+              orientation: 'landscape',
+              unit: 'px',
+              format: [canvas.width, canvas.height]
+          })
+          pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height)
+          pdf.save('global-timeline.pdf')
+      } catch (error) {
+          console.error("PDF Export failed:", error)
+          alert("Failed to export PDF. See console for details.")
       }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const canvas = await html2canvas(containerRef.current, options as any)
-
-      const imgData = canvas.toDataURL('image/png')
-      const pdf = new jsPDF({
-          orientation: 'landscape',
-          unit: 'px',
-          format: [canvas.width, canvas.height]
-      })
-      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height)
-      pdf.save('global-timeline.pdf')
   }
 
   // Helper to find filtered tasks for the modal if a project is selected
@@ -341,7 +355,7 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
       <div
         ref={containerRef}
         className="overflow-x-auto border rounded-lg dark:border-zinc-700 bg-white dark:bg-zinc-900 select-none scrollbar-hide"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', cursor: isPanning ? 'grabbing' : 'default' }}
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', cursor: isPanning ? 'grabbing' : 'crosshair' }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={() => { if(isDragging || resizingTask || isPanning) handleMouseUp() }}
@@ -371,7 +385,7 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
                 <div key={project.id} className="contents">
                   <div
                     className="grid items-center relative h-10 bg-gray-50/50 dark:bg-zinc-800/30 group border-b dark:border-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-800/50"
-                    style={{ gridTemplateColumns, cursor: isPanning ? 'grabbing' : 'grab' }}
+                    style={{ gridTemplateColumns, cursor: isPanning ? 'grabbing' : 'crosshair' }}
                     onMouseDown={(e) => handleMouseDown(e, project.id)}
                   >
                      <div className="p-2 font-semibold text-sm border-r dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 sticky left-0 z-10 w-[200px] h-full flex items-center truncate">
@@ -380,7 +394,7 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
 
                      {/* Show hint only in first few cols if space allows, or rely on cursor */}
                      <div className="absolute left-[200px] top-0 bottom-0 flex items-center pl-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-                         <span className="text-xs text-gray-400 italic bg-white/50 dark:bg-zinc-900/50 px-1 rounded">{isPanning ? "Panning" : "Ctrl+Drag to create"}</span>
+                         <span className="text-xs text-gray-400 italic bg-white/50 dark:bg-zinc-900/50 px-1 rounded">{isPanning ? "Panning" : "Drag to create (Left)"}</span>
                      </div>
 
                      {isDragging && dragProjectId === project.id && dragStart && dragEnd && (
