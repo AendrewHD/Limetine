@@ -14,6 +14,7 @@ type TaskWithMilestones = Task & {
 }
 
 interface GanttChartProps {
+  today?: Date
   tasks: TaskWithMilestones[]
   project: Project
 }
@@ -33,8 +34,9 @@ const renderShape = (shape: string) => {
     }
 }
 
-export default function GanttChart({ tasks, project }: GanttChartProps) {
+export default function GanttChart({ tasks, project, today = new Date() } : GanttChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const centerDateRef = useRef<Date | null>(null)
 
   // -- View State --
   const [viewMode, setViewMode] = useState<'Week' | 'Month' | '3-Month' | 'Year'>('Month')
@@ -54,12 +56,12 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
   // Initialize dates with a buffer around tasks or today
   const [viewStartDate, setViewStartDate] = useState<Date>(() => {
       const dates = tasks.flatMap(t => [new Date(t.startDate), new Date(t.endDate), ...t.milestones.map(m => new Date(m.date))])
-      const minDate = dates.length > 0 ? min(dates) : new Date()
+      const minDate = dates.length > 0 ? min(dates) : today
       return startOfDay(addDays(minDate, -15))
   })
   const [viewEndDate, setViewEndDate] = useState<Date>(() => {
       const dates = tasks.flatMap(t => [new Date(t.startDate), new Date(t.endDate), ...t.milestones.map(m => new Date(m.date))])
-      const maxDate = dates.length > 0 ? max(dates) : addDays(new Date(), 7)
+      const maxDate = dates.length > 0 ? max(dates) : addDays(today, 7)
       return startOfDay(addDays(maxDate, 15))
   })
 
@@ -67,7 +69,7 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
   const days = Array.from({ length: totalDays }, (_, i) => addDays(viewStartDate, i))
 
 
-      // Auto-expand range when switching to wider views
+      // Auto-expand range and Maintain Center Date
   useLayoutEffect(() => {
       if (viewMode === 'Year' || viewMode === '3-Month') {
           const currentDuration = differenceInDays(viewEndDate, viewStartDate)
@@ -77,8 +79,16 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
               setViewEndDate(addDays(center, 180))
           }
       }
+
+      // Restore scroll position to center date
+      if (centerDateRef.current && containerRef.current) {
+          const daysDiff = differenceInDays(centerDateRef.current, viewStartDate)
+          const newScrollLeft = daysDiff * COLUMN_WIDTH - containerRef.current.clientWidth / 2
+          containerRef.current.scrollLeft = newScrollLeft
+          centerDateRef.current = null
+      }
       // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode])
+  }, [viewMode, COLUMN_WIDTH])
 
   const gridTemplateColumns = `${SIDEBAR_WIDTH}px repeat(${totalDays}, ${COLUMN_WIDTH}px)`
 
@@ -113,22 +123,24 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
 
   const jumpToToday = () => {
       if (!containerRef.current) return
-      const today = startOfDay(new Date())
+      const targetDate = startOfDay(today)
 
-      // If today is outside range, center range on today
-      if (today < viewStartDate || today > viewEndDate) {
-          setViewStartDate(addDays(today, -15))
-          setViewEndDate(addDays(today, 15))
-          // Scroll will happen after render, logic below might be needed or effect will handle
-          // Actually, if we reset dates completely, we might want to wait for render.
-          // For simplicity, let's just update range.
-          // But to jump specifically, we need to calculate offset.
-          // Let's reset range to be safe.
-          return;
+      // Ensure target is within view with buffer
+      if (targetDate < viewStartDate || targetDate > viewEndDate) {
+          setViewStartDate(addDays(targetDate, -30))
+          setViewEndDate(addDays(targetDate, 30))
+          // Scroll will need to wait for render... but effect below handles scrollLeft adjustment for start date change.
+          // However, we want to center specifically on today.
+          // Let's rely on effect to keep relative position? No, `prevStartRef` effect shifts scroll to keep *visual* position same.
+          // If we jump, we want to change visual position.
+
+          // Let's just set a flag or ref to force center on next render?
+          centerDateRef.current = targetDate
+          return
       }
 
-      const daysDiff = differenceInDays(today, viewStartDate)
-      const scrollPos = daysDiff * COLUMN_WIDTH
+      const daysDiff = differenceInDays(targetDate, viewStartDate)
+      const scrollPos = daysDiff * COLUMN_WIDTH - containerRef.current.clientWidth / 2 + COLUMN_WIDTH / 2
       containerRef.current.scrollTo({ left: scrollPos, behavior: 'smooth' })
   }
 
@@ -255,7 +267,7 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
               scrollX: -window.scrollX,
               scrollY: -window.scrollY,
               windowWidth: document.documentElement.offsetWidth,
-              windowHeight: document.documentElement.offsetHeight
+              windowHeight: document.documentElement.offsetHeight, backgroundColor: '#ffffff'
           }
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -277,7 +289,16 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
 
   const projectColor = (project as { color?: string }).color || '#3b82f6';
 
-  return (
+
+  const handleViewModeChange = (mode: 'Week' | 'Month' | '3-Month' | 'Year') => {
+      if (containerRef.current) {
+          const centerOffset = containerRef.current.scrollLeft + containerRef.current.clientWidth / 2
+          const centerIndex = Math.floor(centerOffset / COLUMN_WIDTH)
+          centerDateRef.current = addDays(viewStartDate, centerIndex)
+      }
+      setViewMode(mode)
+  }
+return (
     <div className="space-y-4">
        {/* Toolbar */}
        <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white dark:bg-zinc-900 border rounded-lg dark:border-zinc-700">
@@ -286,7 +307,7 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
               {(['Week', 'Month', '3-Month', 'Year'] as const).map(mode => (
                   <button
                     key={mode}
-                    onClick={() => setViewMode(mode)}
+                    onClick={() => handleViewModeChange(mode)}
                     className={`px-3 py-1 text-xs rounded-md border transition-colors ${viewMode === mode ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 font-semibold' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50 border-transparent'}`}
                   >
                       {mode}

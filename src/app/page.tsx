@@ -20,7 +20,7 @@ export default async function Home() {
 
         <section>
           <GlobalTimeline
-            projects={projects}
+            projects={projects} today={new Date()}
           />
         </section>
       </div>
