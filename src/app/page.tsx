@@ -1,31 +1,27 @@
-import NewProjectForm from '@/components/NewProjectForm'
-import ProjectList from '@/components/ProjectList'
+import ProjectDropdown from '@/components/ProjectDropdown'
 import GlobalTimeline from '@/components/GlobalTimeline'
-import { getProjects } from '@/app/actions'
+import { getTimelineData } from '@/app/actions'
 
 export const dynamic = 'force-dynamic'
 
 export default async function Home() {
-  const projects = await getProjects()
+  const projects = await getTimelineData()
 
   return (
-    <main className="min-h-screen p-8 lg:p-24 dark:bg-zinc-950 dark:text-white">
-      <div className="max-w-6xl mx-auto space-y-12">
+    <main className="min-h-screen p-8 dark:bg-zinc-950 dark:text-white">
+      <div className="w-full px-4 space-y-8">
         <header className="flex items-center justify-between border-b pb-6 dark:border-zinc-800">
           <div>
             <h1 className="text-4xl font-bold tracking-tight">Limetine</h1>
             <p className="mt-2 text-gray-500 dark:text-gray-400">Project Timeline Manager</p>
           </div>
-          <NewProjectForm />
+          <ProjectDropdown projects={projects} />
         </header>
 
         <section>
-          <GlobalTimeline projects={projects} />
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-semibold mb-6">Your Projects</h2>
-          <ProjectList projects={projects} />
+          <GlobalTimeline
+            projects={projects}
+          />
         </section>
       </div>
     </main>

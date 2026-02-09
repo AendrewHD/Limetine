@@ -35,7 +35,10 @@ export default async function ProjectPage(props: { params: Promise<{ id: string 
 
         <section className="space-y-4">
             <h2 className="text-xl font-semibold">Timeline</h2>
-            <GanttChart tasks={project.tasks} />
+            <GanttChart
+              project={project}
+              tasks={project.tasks}
+            />
         </section>
       </div>
     </main>
