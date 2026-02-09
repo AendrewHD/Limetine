@@ -1,6 +1,7 @@
 import { getProject } from '@/app/actions'
 import GanttChart from '@/components/GanttChart'
 import NewTaskForm from '@/components/NewTaskForm'
+import NewMilestoneForm from '@/components/NewMilestoneForm'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getTimelineRange } from '@/lib/timeline-utils'
@@ -29,15 +30,17 @@ export default async function ProjectPage(props: { params: Promise<{ id: string 
             <h1 className="text-3xl font-bold">{project.name}</h1>
             <p className="mt-2 text-gray-500 dark:text-gray-400">{project.description}</p>
           </div>
-          <NewTaskForm projectId={project.id} />
+          <div className="flex gap-2">
+            <NewMilestoneForm tasks={project.tasks} />
+            <NewTaskForm projectId={project.id} />
+          </div>
         </header>
 
         <section className="space-y-4">
             <h2 className="text-xl font-semibold">Timeline</h2>
             <GanttChart
               project={project}
-              initialStartDate={viewStartDate}
-              totalDays={totalDays}
+              tasks={project.tasks}
             />
         </section>
       </div>

@@ -20,8 +20,10 @@ export async function createProject(formData: FormData) {
     return { error: `Description must be less than ${MAX_DESCRIPTION_LENGTH} characters` }
   }
 
-  const projects = await prisma.project.findMany({ select: { color: true } })
-  const usedColors = projects.map(p => p.color).filter(Boolean) as string[]
+  // Workaround for type issue where Project type is missing color property despite schema update
+  const projects = await prisma.project.findMany()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const usedColors = projects.map((p: any) => p.color).filter(Boolean) as string[]
   const color = getRandomColor(usedColors)
 
   await prisma.project.create({
@@ -29,7 +31,7 @@ export async function createProject(formData: FormData) {
       name,
       description,
       color,
-    },
+    } as any, // eslint-disable-line @typescript-eslint/no-explicit-any
   })
 
   revalidatePath('/projects')
@@ -39,7 +41,7 @@ export async function createProject(formData: FormData) {
 export async function getTimelineData() {
   return await prisma.project.findMany({
     orderBy: { createdAt: 'desc' },
-    include: { tasks: true }
+    include: { tasks: { include: { milestones: true } } }
   })
 }
 
@@ -54,7 +56,12 @@ export async function getProjects() {
 export const getProject = cache(async (id: string) => {
   return await prisma.project.findUnique({
     where: { id },
-    include: { tasks: { orderBy: { startDate: 'asc' } } },
+    include: {
+      tasks: {
+        orderBy: { startDate: 'asc' },
+        include: { milestones: true }
+      }
+    },
   })
 })
 
@@ -106,4 +113,34 @@ export async function deleteTask(id: string, projectId: string) {
   })
   revalidatePath(`/projects/${projectId}`)
   revalidatePath('/')
+}
+
+export async function createMilestone(formData: FormData) {
+  const name = formData.get('name') as string
+  const date = formData.get('date') as string
+  const shape = formData.get('shape') as string || 'circle'
+  const taskId = formData.get('taskId') as string
+
+  if (!name || !date || !taskId) {
+    return { error: 'Missing required fields' }
+  }
+
+  // We need to know the projectId to revalidate the path
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+    select: { projectId: true }
+  })
+
+  if (!task) return { error: 'Task not found' }
+
+  await prisma.milestone.create({
+    data: {
+      name,
+      date: new Date(date),
+      shape,
+      taskId
+    }
+  })
+
+  revalidatePath(`/projects/${task.projectId}`)
 }
