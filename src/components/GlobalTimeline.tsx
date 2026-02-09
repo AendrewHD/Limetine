@@ -6,7 +6,7 @@ import { useState, useRef, useLayoutEffect } from 'react'
 import { updateTask } from '@/app/actions'
 import TaskCreationModal from './TaskCreationModal'
 import MilestoneCreationModal from './MilestoneCreationModal'
-import html2canvas from 'html2canvas'
+import domToImage from 'dom-to-image-more'
 import jsPDF from 'jspdf'
 
 type TaskWithMilestones = Task & { milestones: Milestone[] }
@@ -46,7 +46,7 @@ export default function GlobalTimeline({ projects, today = new Date() } : Global
           case 'Week': return 100;
           case 'Month': return 50;
           case '3-Month': return 30;
-          case 'Year': return 20;
+          case 'Year': return 10;
           default: return 50;
       }
   }
@@ -75,8 +75,8 @@ export default function GlobalTimeline({ projects, today = new Date() } : Global
           const currentDuration = differenceInDays(viewEndDate, viewStartDate)
           if (currentDuration < 365) {
               const center = addDays(viewStartDate, Math.floor(currentDuration / 2))
-              setViewStartDate(subDays(center, 180))
-              setViewEndDate(addDays(center, 180))
+              setViewStartDate(subDays(center, 365))
+              setViewEndDate(addDays(center, 365))
           }
       }
 
@@ -262,23 +262,24 @@ export default function GlobalTimeline({ projects, today = new Date() } : Global
       if (!containerRef.current) return
 
       try {
-          const options = {
-              scrollX: -window.scrollX,
-              scrollY: -window.scrollY,
-              windowWidth: document.documentElement.offsetWidth,
-              windowHeight: document.documentElement.offsetHeight, backgroundColor: '#ffffff'
-          }
+          // Temporarily set overflow to visible to capture full width
+          const originalOverflow = containerRef.current.style.overflow
+          containerRef.current.style.overflow = 'visible'
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const canvas = await html2canvas(containerRef.current, options as any)
+          const dataUrl = await domToImage.toPng(containerRef.current, {
+              bgcolor: '#ffffff',
+              width: containerRef.current.scrollWidth,
+              height: containerRef.current.scrollHeight
+          })
 
-          const imgData = canvas.toDataURL('image/png')
+          containerRef.current.style.overflow = originalOverflow
+
           const pdf = new jsPDF({
               orientation: 'landscape',
               unit: 'px',
-              format: [canvas.width, canvas.height]
+              format: [containerRef.current.scrollWidth, containerRef.current.scrollHeight]
           })
-          pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height)
+          pdf.addImage(dataUrl, 'PNG', 0, 0, containerRef.current.scrollWidth, containerRef.current.scrollHeight)
           pdf.save('global-timeline.pdf')
       } catch (error) {
           console.error("PDF Export failed:", error)
