@@ -5,6 +5,7 @@ import { Task, Milestone, Project } from '@prisma/client'
 import { useState, useRef } from 'react'
 import { updateTask } from '@/app/actions'
 import TaskCreationModal from './TaskCreationModal'
+import MilestoneCreationModal from './MilestoneCreationModal'
 
 type TaskWithMilestones = Task & {
   milestones: Milestone[]
@@ -38,15 +39,14 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<Date | null>(null)
   const [dragEnd, setDragEnd] = useState<Date | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
+  const [isMilestoneModalOpen, setIsMilestoneModalOpen] = useState(false)
+
+  const [clickedTaskId, setClickedTaskId] = useState<string | null>(null)
 
   const [resizingTask, setResizingTask] = useState<string | null>(null)
   const [resizeEdge, setResizeEdge] = useState<'start' | 'end' | null>(null)
   const [resizeCurrentDate, setResizeCurrentDate] = useState<Date | null>(null)
-
-  if (tasks.length === 0) {
-    // Show a simplified view or instruction, but we need the grid for drag-creation
-  }
 
   // Determine date range
   const dates = tasks.flatMap(t => [
@@ -66,7 +66,7 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
   const days = Array.from({ length: totalDays }, (_, i) => addDays(viewStartDate, i))
   const gridTemplateColumns = `${SIDEBAR_WIDTH}px repeat(${totalDays}, ${COLUMN_WIDTH}px)`
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = (e: React.MouseEvent, taskId?: string) => {
     // Check if clicking resize handle
     if ((e.target as HTMLElement).getAttribute('data-handle')) return
 
@@ -86,6 +86,11 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
     setIsDragging(true)
     setDragStart(date)
     setDragEnd(date)
+    if (taskId) {
+        setClickedTaskId(taskId)
+    } else {
+        setClickedTaskId(null)
+    }
   }
 
   const handleResizeStart = (e: React.MouseEvent, taskId: string, edge: 'start' | 'end', initialDate: Date) => {
@@ -116,7 +121,15 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
   const handleMouseUp = async () => {
     if (isDragging) {
       setIsDragging(false)
-      setIsModalOpen(true)
+
+      if (dragStart && dragEnd && dragStart.getTime() === dragEnd.getTime()) {
+          // Single click -> Milestone
+          setIsMilestoneModalOpen(true)
+      } else if (dragStart && dragEnd && dragStart.getTime() !== dragEnd.getTime()) {
+          // Drag -> Task
+          setIsTaskModalOpen(true)
+      }
+
     } else if (resizingTask && resizeEdge && resizeCurrentDate) {
       const data = resizeEdge === 'start' ? { startDate: resizeCurrentDate } : { endDate: resizeCurrentDate };
       await updateTask(resizingTask, project.id, data);
@@ -132,9 +145,9 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
   return (
     <div>
        <TaskCreationModal
-        isOpen={isModalOpen}
+        isOpen={isTaskModalOpen}
         onClose={() => {
-            setIsModalOpen(false);
+            setIsTaskModalOpen(false);
             setDragStart(null);
             setDragEnd(null);
         }}
@@ -142,6 +155,19 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
         initialEndDate={dragStart && dragEnd ? (dragStart < dragEnd ? dragEnd : dragStart) : undefined}
         projectId={project.id}
         projects={[project]}
+      />
+
+      <MilestoneCreationModal
+        isOpen={isMilestoneModalOpen}
+        onClose={() => {
+            setIsMilestoneModalOpen(false);
+            setDragStart(null);
+            setDragEnd(null);
+            setClickedTaskId(null);
+        }}
+        initialDate={dragStart || undefined}
+        taskId={clickedTaskId}
+        tasks={tasks}
       />
 
       <div
@@ -177,7 +203,7 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
             <div
                 className="grid items-center relative h-10 bg-gray-50/50 dark:bg-zinc-800/30 group cursor-crosshair border-b dark:border-zinc-800"
                 style={{ gridTemplateColumns }}
-                onMouseDown={handleMouseDown}
+                onMouseDown={(e) => handleMouseDown(e)}
             >
                  <div className="p-2 font-semibold text-sm border-r dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 sticky left-0 z-10 w-[200px] h-full flex items-center truncate text-gray-400 italic">
                     Drag here to create...
@@ -192,7 +218,7 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
                             gridColumnEnd: `span ${differenceInDays(dragStart < dragEnd ? dragEnd : dragStart, dragStart < dragEnd ? dragStart : dragEnd) + 1}`
                         }}
                     >
-                        New Task
+                        {dragStart.getTime() !== dragEnd.getTime() ? "New Task" : "New Milestone"}
                     </div>
                  )}
             </div>
@@ -218,7 +244,7 @@ export default function GanttChart({ tasks, project }: GanttChartProps) {
                     key={task.id}
                     className="grid items-center relative h-12 hover:bg-gray-50 dark:hover:bg-zinc-800/50"
                     style={{ gridTemplateColumns }}
-                    onMouseDown={handleMouseDown}
+                    onMouseDown={(e) => handleMouseDown(e, task.id)}
                 >
                   <div className="p-2 truncate font-medium border-r dark:border-zinc-700 bg-white dark:bg-zinc-900 sticky left-0 z-10 w-[200px] h-full flex items-center">
                     {task.name}

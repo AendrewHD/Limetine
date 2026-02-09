@@ -5,6 +5,7 @@ import { Project, Task, Milestone } from '@prisma/client'
 import { useState, useRef } from 'react'
 import { updateTask } from '@/app/actions'
 import TaskCreationModal from './TaskCreationModal'
+import MilestoneCreationModal from './MilestoneCreationModal'
 
 type TaskWithMilestones = Task & { milestones: Milestone[] }
 type ProjectWithTasks = Project & { tasks: TaskWithMilestones[] }
@@ -37,7 +38,10 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
   const [dragStart, setDragStart] = useState<Date | null>(null)
   const [dragEnd, setDragEnd] = useState<Date | null>(null)
   const [dragProjectId, setDragProjectId] = useState<string | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
+  const [isMilestoneModalOpen, setIsMilestoneModalOpen] = useState(false)
+
+  const [clickedTaskId, setClickedTaskId] = useState<string | null>(null)
 
   const [resizingTask, setResizingTask] = useState<string | null>(null)
   const [resizeProjectId, setResizeProjectId] = useState<string | null>(null)
@@ -75,7 +79,7 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
   const days = Array.from({ length: totalDays }, (_, i) => addDays(viewStartDate, i))
   const gridTemplateColumns = `${SIDEBAR_WIDTH}px repeat(${totalDays}, ${COLUMN_WIDTH}px)`
 
-  const handleMouseDown = (e: React.MouseEvent, projectId: string) => {
+  const handleMouseDown = (e: React.MouseEvent, projectId: string, taskId?: string) => {
     // Check if clicking resize handle
     if ((e.target as HTMLElement).getAttribute('data-handle')) return
 
@@ -96,6 +100,11 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
     setDragProjectId(projectId)
     setDragStart(date)
     setDragEnd(date)
+    if (taskId) {
+        setClickedTaskId(taskId)
+    } else {
+        setClickedTaskId(null)
+    }
   }
 
   const handleResizeStart = (e: React.MouseEvent, taskId: string, projectId: string, edge: 'start' | 'end', initialDate: Date) => {
@@ -127,7 +136,15 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
   const handleMouseUp = async () => {
     if (isDragging) {
       setIsDragging(false)
-      setIsModalOpen(true)
+
+      if (dragStart && dragEnd && dragStart.getTime() === dragEnd.getTime()) {
+          // Single click -> Milestone
+          setIsMilestoneModalOpen(true)
+      } else if (dragStart && dragEnd && dragStart.getTime() !== dragEnd.getTime()) {
+          // Drag -> Task
+          setIsTaskModalOpen(true)
+      }
+
     } else if (resizingTask && resizeEdge && resizeCurrentDate && resizeProjectId) {
       const data = resizeEdge === 'start' ? { startDate: resizeCurrentDate } : { endDate: resizeCurrentDate };
       await updateTask(resizingTask, resizeProjectId, data);
@@ -138,14 +155,23 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
     }
   }
 
+  // Helper to find filtered tasks for the modal if a project is selected
+  const getTasksForModal = () => {
+      if (dragProjectId) {
+          const project = projects.find(p => p.id === dragProjectId)
+          return project ? project.tasks : []
+      }
+      return projects.flatMap(p => p.tasks)
+  }
+
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-semibold">Global Timeline</h2>
 
       <TaskCreationModal
-        isOpen={isModalOpen}
+        isOpen={isTaskModalOpen}
         onClose={() => {
-            setIsModalOpen(false);
+            setIsTaskModalOpen(false);
             setDragStart(null);
             setDragEnd(null);
             setDragProjectId(null);
@@ -154,6 +180,20 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
         initialEndDate={dragStart && dragEnd ? (dragStart < dragEnd ? dragEnd : dragStart) : undefined}
         projectId={dragProjectId || ''}
         projects={projects}
+      />
+
+      <MilestoneCreationModal
+        isOpen={isMilestoneModalOpen}
+        onClose={() => {
+            setIsMilestoneModalOpen(false);
+            setDragStart(null);
+            setDragEnd(null);
+            setDragProjectId(null);
+            setClickedTaskId(null);
+        }}
+        initialDate={dragStart || undefined}
+        taskId={clickedTaskId}
+        tasks={getTasksForModal()}
       />
 
       <div
@@ -205,7 +245,7 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
                                 gridColumnEnd: `span ${differenceInDays(dragStart < dragEnd ? dragEnd : dragStart, dragStart < dragEnd ? dragStart : dragEnd) + 1}`
                             }}
                         >
-                            New Task
+                            {dragStart.getTime() !== dragEnd.getTime() ? "New Task" : "New Milestone"}
                         </div>
                      )}
                   </div>
@@ -232,7 +272,7 @@ export default function GlobalTimeline({ projects }: GlobalTimelineProps) {
                         key={task.id}
                         className="grid items-center relative h-10 hover:bg-gray-50 dark:hover:bg-zinc-800/50"
                         style={{ gridTemplateColumns }}
-                        onMouseDown={(e) => handleMouseDown(e, project.id)}
+                        onMouseDown={(e) => handleMouseDown(e, project.id, task.id)}
                       >
                         <div className="p-2 pl-6 truncate text-sm border-r dark:border-zinc-700 bg-white dark:bg-zinc-900 sticky left-0 z-10 w-[200px] h-full flex items-center">
                           {task.name}
