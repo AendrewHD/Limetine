@@ -12,6 +12,8 @@ type ProjectWithTasks = Project & { tasks: TaskWithMilestones[] }
 
 interface GlobalTimelineProps {
   projects: ProjectWithTasks[]
+  initialStartDate: Date
+  totalDays: number
 }
 
 const COLUMN_WIDTH = 50

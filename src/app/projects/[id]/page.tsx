@@ -4,6 +4,7 @@ import NewTaskForm from '@/components/NewTaskForm'
 import NewMilestoneForm from '@/components/NewMilestoneForm'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { getTimelineRange } from '@/lib/timeline-utils'
 
 export default async function ProjectPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -12,6 +13,8 @@ export default async function ProjectPage(props: { params: Promise<{ id: string 
   if (!project) {
     notFound()
   }
+
+  const { viewStartDate, totalDays } = getTimelineRange(project.tasks)
 
   return (
     <main className="min-h-screen p-8 lg:p-12 dark:bg-zinc-950 dark:text-white">
