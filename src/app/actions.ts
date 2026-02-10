@@ -20,10 +20,8 @@ export async function createProject(formData: FormData) {
     return { error: `Description must be less than ${MAX_DESCRIPTION_LENGTH} characters` }
   }
 
-  // Workaround for type issue where Project type is missing color property despite schema update
   const projects = await prisma.project.findMany()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const usedColors = projects.map((p: any) => p.color).filter(Boolean) as string[]
+  const usedColors = projects.map((p) => p.color).filter(Boolean) as string[]
   const color = getRandomColor(usedColors)
 
   await prisma.project.create({
@@ -31,7 +29,7 @@ export async function createProject(formData: FormData) {
       name,
       description,
       color,
-    } as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+    },
   })
 
   revalidatePath('/projects')
