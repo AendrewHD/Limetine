@@ -1,5 +1,5 @@
 import { addDays, differenceInDays, max, min, startOfDay, startOfToday } from 'date-fns'
-import { Task } from '@prisma/client'
+import type { Task } from '@prisma/client'
 
 export function getTimelineRange(tasks: Task[]) {
   let minDate: Date, maxDate: Date
