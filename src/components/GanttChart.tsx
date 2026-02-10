@@ -6,6 +6,7 @@ import { useState, useRef, useLayoutEffect } from 'react'
 import { updateTask } from '@/app/actions'
 import TaskCreationModal from './TaskCreationModal'
 import MilestoneCreationModal from './MilestoneCreationModal'
+import MilestoneShape from './MilestoneShape'
 
 import jsPDF from 'jspdf'
 
@@ -21,18 +22,7 @@ interface GanttChartProps {
 
 const SIDEBAR_WIDTH = 200
 
-const renderShape = (shape: string) => {
-    const classes = "text-purple-600 dark:text-purple-400 fill-current";
-    switch (shape) {
-        case 'square': return <rect x="2" y="2" width="12" height="12" className={classes} />;
-        case 'triangle': return <polygon points="8,2 14,14 2,14" className={classes} />;
-        case 'diamond': return <polygon points="8,2 14,8 8,14 2,8" className={classes} />;
-        case 'star': return <polygon points="8,1 10,6 15,6 11,9 12,14 8,11 4,14 5,9 1,6 6,6" className={classes} />;
-        case 'flag': return <path d="M4 2 L12 2 L12 10 L4 10 Z M4 2 L4 14" className={classes} stroke="currentColor" strokeWidth="2" fill="none" />;
-        case 'circle':
-        default: return <circle cx="8" cy="8" r="6" className={classes} />;
-    }
-}
+
 
 export default function GanttChart({ tasks, project, today = new Date() } : GanttChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -486,7 +476,7 @@ return (
                             }}
                         >
                             <svg viewBox="0 0 16 16" className="w-5 h-5 overflow-visible drop-shadow-sm">
-                                {renderShape(milestone.shape)}
+                                <MilestoneShape shape={milestone.shape} />
                             </svg>
                             <span className="absolute left-full ml-1 text-[10px] leading-none font-medium bg-white/90 dark:bg-zinc-900/90 px-1 py-0.5 rounded shadow-sm whitespace-nowrap border dark:border-zinc-700">
                                 {milestone.name}
