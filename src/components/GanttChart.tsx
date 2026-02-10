@@ -288,7 +288,7 @@ export default function GanttChart({ tasks, project, today = new Date() } : Gant
       }
   }
 
-  const projectColor = (project as { color?: string }).color || '#3b82f6';
+  const projectColor = project.color || '#3b82f6';
 
   const handleViewModeChange = (mode: 'Week' | 'Month' | '3-Month' | 'Year') => {
       if (containerRef.current) {
