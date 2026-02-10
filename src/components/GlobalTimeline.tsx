@@ -389,7 +389,7 @@ export default function GlobalTimeline({ projects, today = new Date() } : Global
       >
         <div className="min-w-full inline-block">
           {/* Header */}
-          <div className="grid border-b dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 sticky top-0 z-30" style={{ gridTemplateColumns }}>
+          <div className="grid border-b dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 sticky top-0 z-40" style={{ gridTemplateColumns }}>
             <div className="p-2 font-bold border-r dark:border-zinc-700 sticky left-0 bg-gray-50 dark:bg-zinc-800 z-20">Project / Task</div>
             {days.map(day => (
               <div key={day.toISOString()} className={`p-2 text-center text-xs border-r border-gray-100 dark:border-zinc-700 last:border-r-0 ${isSameDay(day, today) ? "bg-blue-50 dark:bg-blue-900/20" : ""}`} style={{ width: COLUMN_WIDTH }}>
@@ -402,7 +402,7 @@ export default function GlobalTimeline({ projects, today = new Date() } : Global
           {/* Rows */}
           <div className="relative">
               <div className="absolute inset-0 grid pointer-events-none" style={{ gridTemplateColumns }}>
-                  <div className="border-r dark:border-zinc-700 bg-white dark:bg-zinc-900 sticky left-0 z-10"></div>
+                  <div className="border-r dark:border-zinc-700 bg-white dark:bg-zinc-900 sticky left-0 z-30"></div>
                   {days.map(day => (
                       <div key={day.toISOString()} className={`border-r border-dashed border-gray-100 dark:border-zinc-800 last:border-r-0 ${isSameDay(day, today) ? "bg-blue-50/50 dark:bg-blue-900/10" : ""}`}></div>
                   ))}
@@ -415,7 +415,7 @@ export default function GlobalTimeline({ projects, today = new Date() } : Global
                     style={{ gridTemplateColumns, cursor: isPanning ? 'grabbing' : 'crosshair' }}
                     onMouseDown={(e) => handleMouseDown(e, project.id)}
                   >
-                     <div className="p-2 font-semibold text-sm border-r dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 sticky left-0 z-10 w-[200px] h-full flex items-center truncate">
+                     <div className="p-2 font-semibold text-sm border-r dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 sticky left-0 z-30 w-[200px] h-full flex items-center truncate">
                         {project.name}
                      </div>
 
@@ -465,7 +465,7 @@ export default function GlobalTimeline({ projects, today = new Date() } : Global
                         style={{ gridTemplateColumns }}
                         onMouseDown={(e) => handleMouseDown(e, project.id, task.id)}
                       >
-                        <div className="p-2 pl-6 truncate text-sm border-r dark:border-zinc-700 bg-white dark:bg-zinc-900 sticky left-0 z-10 w-[200px] h-full flex items-center">
+                        <div className="p-2 pl-6 truncate text-sm border-r dark:border-zinc-700 bg-white dark:bg-zinc-900 sticky left-0 z-30 w-[200px] h-full flex items-center">
                           {task.name}
                         </div>
 
