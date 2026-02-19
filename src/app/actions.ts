@@ -1,5 +1,6 @@
 'use server'
 
+import { validateMilestoneShape } from '@/lib/validation'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { cache } from 'react'
@@ -118,7 +119,7 @@ export async function deleteTask(id: string, projectId: string) {
 export async function createMilestone(formData: FormData) {
   const name = formData.get('name') as string
   const date = formData.get('date') as string
-  const shape = formData.get('shape') as string || 'circle'
+  const shape = validateMilestoneShape(formData.get('shape') as string)
   const taskId = formData.get('taskId') as string
 
   if (!name || !date || !taskId) {
