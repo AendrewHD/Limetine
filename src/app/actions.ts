@@ -68,12 +68,12 @@ export const getProject = cache(async (id: string) => {
 export async function createTask(formData: FormData) {
   const name = formData.get('name') as string
   const description = formData.get('description') as string
-  const startDate = formData.get('startDate') as string
-  const endDate = formData.get('endDate') as string
+  const startDateStr = formData.get('startDate') as string
+  const endDateStr = formData.get('endDate') as string
   const projectId = formData.get('projectId') as string
   const status = formData.get('status') as string || 'TODO'
 
-  if (!name || !startDate || !endDate || !projectId) {
+  if (!name || !startDateStr || !endDateStr || !projectId) {
     return { error: 'Missing required fields' }
   }
   if (name.length > MAX_NAME_LENGTH) {
@@ -83,12 +83,19 @@ export async function createTask(formData: FormData) {
     return { error: `Description must be less than ${MAX_DESCRIPTION_LENGTH} characters` }
   }
 
+  const startDate = new Date(startDateStr)
+  const endDate = new Date(endDateStr)
+
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    return { error: 'Invalid date format' }
+  }
+
   await prisma.task.create({
     data: {
       name,
       description,
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
+      startDate,
+      endDate,
       projectId,
       status
     },
@@ -117,12 +124,17 @@ export async function deleteTask(id: string, projectId: string) {
 
 export async function createMilestone(formData: FormData) {
   const name = formData.get('name') as string
-  const date = formData.get('date') as string
+  const dateStr = formData.get('date') as string
   const shape = formData.get('shape') as string || 'circle'
   const taskId = formData.get('taskId') as string
 
-  if (!name || !date || !taskId) {
+  if (!name || !dateStr || !taskId) {
     return { error: 'Missing required fields' }
+  }
+
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) {
+    return { error: 'Invalid date format' }
   }
 
   // We need to know the projectId to revalidate the path
@@ -136,7 +148,7 @@ export async function createMilestone(formData: FormData) {
   await prisma.milestone.create({
     data: {
       name,
-      date: new Date(date),
+      date,
       shape,
       taskId
     }
