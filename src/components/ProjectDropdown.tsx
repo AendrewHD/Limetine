@@ -59,7 +59,9 @@ export default function ProjectDropdown({ projects }: ProjectDropdownProps) {
                  </button>
                </div>
                <form
-                 action={async (formData) => {
+                 onSubmit={async (e) => {
+                   e.preventDefault()
+                   const formData = new FormData(e.currentTarget)
                    await createProject(formData)
                    setShowNewProjectForm(false)
                    setIsOpen(false)
