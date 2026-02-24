@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useTransition } from 'react'
 import Link from 'next/link'
 import { Project } from '@prisma/client'
 import { createProject } from '@/app/actions'
@@ -12,6 +12,7 @@ interface ProjectDropdownProps {
 export default function ProjectDropdown({ projects }: ProjectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [showNewProjectForm, setShowNewProjectForm] = useState(false)
+  const [isPending, startTransition] = useTransition()
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -59,12 +60,18 @@ export default function ProjectDropdown({ projects }: ProjectDropdownProps) {
                  </button>
                </div>
                <form
-                 onSubmit={async (e) => {
+                 onSubmit={(e) => {
                    e.preventDefault()
                    const formData = new FormData(e.currentTarget)
-                   await createProject(formData)
-                   setShowNewProjectForm(false)
-                   setIsOpen(false)
+                   startTransition(async () => {
+                     try {
+                        await createProject(formData)
+                        setShowNewProjectForm(false)
+                        setIsOpen(false)
+                     } catch (error) {
+                        console.error("Failed to create project", error)
+                     }
+                   })
                  }}
                  className="flex flex-col gap-3"
                >
@@ -74,17 +81,20 @@ export default function ProjectDropdown({ projects }: ProjectDropdownProps) {
                    className="p-2 text-sm border rounded dark:bg-zinc-800 dark:border-zinc-600 w-full"
                    required
                    autoFocus
+                   disabled={isPending}
                  />
                  <textarea
                    name="description"
                    placeholder="Description (optional)"
                    className="p-2 text-sm border rounded dark:bg-zinc-800 dark:border-zinc-600 w-full resize-none h-20"
+                   disabled={isPending}
                  />
                  <button
                    type="submit"
-                   className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition"
+                   className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition disabled:opacity-50"
+                   disabled={isPending}
                  >
-                   Create Project
+                   {isPending ? 'Creating...' : 'Create Project'}
                  </button>
                </form>
              </div>

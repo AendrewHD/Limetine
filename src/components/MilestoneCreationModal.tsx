@@ -3,6 +3,7 @@
 import { createMilestone } from '@/app/actions'
 import { format } from 'date-fns'
 import { Task } from '@prisma/client'
+import { useTransition } from 'react'
 
 interface MilestoneCreationModalProps {
   isOpen: boolean
@@ -13,17 +14,25 @@ interface MilestoneCreationModalProps {
 }
 
 export default function MilestoneCreationModal({ isOpen, onClose, initialDate, taskId, tasks }: MilestoneCreationModalProps) {
+  const [isPending, startTransition] = useTransition()
+
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white dark:bg-zinc-900 p-6 rounded-lg shadow-xl w-full max-w-md border dark:border-zinc-700">
         <h3 className="text-lg font-semibold mb-4">Create Milestone</h3>
-        <form onSubmit={async (e) => {
+        <form onSubmit={(e) => {
             e.preventDefault()
             const formData = new FormData(e.currentTarget)
-            await createMilestone(formData)
-            onClose()
+            startTransition(async () => {
+                try {
+                    await createMilestone(formData)
+                    onClose()
+                } catch (error) {
+                    console.error("Failed to create milestone", error)
+                }
+            })
           }}
           className="flex flex-col gap-4"
         >
@@ -34,6 +43,7 @@ export default function MilestoneCreationModal({ isOpen, onClose, initialDate, t
                 defaultValue={taskId || ''}
                 className="w-full p-2 border rounded dark:bg-zinc-800 dark:border-zinc-600"
                 required
+                disabled={isPending}
             >
               <option value="" disabled>Select a task</option>
               {tasks.map(task => (
@@ -50,6 +60,7 @@ export default function MilestoneCreationModal({ isOpen, onClose, initialDate, t
               className="w-full p-2 border rounded dark:bg-zinc-800 dark:border-zinc-600"
               autoFocus
               required
+              disabled={isPending}
             />
           </div>
 
@@ -61,12 +72,13 @@ export default function MilestoneCreationModal({ isOpen, onClose, initialDate, t
                 defaultValue={initialDate ? format(initialDate, 'yyyy-MM-dd') : ''}
                 className="w-full p-2 border rounded dark:bg-zinc-800 dark:border-zinc-600"
                 required
+                disabled={isPending}
               />
           </div>
 
           <div>
              <label className="block text-sm font-medium mb-1">Shape</label>
-             <select name="shape" className="w-full p-2 border rounded dark:bg-zinc-800 dark:border-zinc-600">
+             <select name="shape" className="w-full p-2 border rounded dark:bg-zinc-800 dark:border-zinc-600" disabled={isPending}>
                 <option value="circle">Circle</option>
                 <option value="square">Square</option>
                 <option value="triangle">Triangle</option>
@@ -81,14 +93,16 @@ export default function MilestoneCreationModal({ isOpen, onClose, initialDate, t
               type="button"
               onClick={onClose}
               className="px-4 py-2 text-sm bg-gray-200 text-black rounded hover:bg-gray-300 dark:bg-zinc-700 dark:text-white dark:hover:bg-zinc-600"
+              disabled={isPending}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
+              className="px-4 py-2 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
+              disabled={isPending}
             >
-              Create Milestone
+              {isPending ? 'Creating...' : 'Create Milestone'}
             </button>
           </div>
         </form>
