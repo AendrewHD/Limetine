@@ -21,7 +21,9 @@ export default function NewProjectForm() {
   return (
     <div className="p-6 border rounded-lg bg-gray-50 dark:bg-zinc-900 dark:border-zinc-700">
       <h3 className="text-lg font-semibold mb-4">New Project</h3>
-      <form action={async (formData) => {
+      <form onSubmit={async (e) => {
+          e.preventDefault()
+          const formData = new FormData(e.currentTarget)
           const result = await createProject(formData)
           if (result && result.error) {
             setError(result.error)

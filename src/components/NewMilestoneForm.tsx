@@ -28,7 +28,9 @@ export default function NewMilestoneForm({ tasks }: NewMilestoneFormProps) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-zinc-900 p-6 rounded-lg w-[400px] shadow-xl border dark:border-zinc-700">
         <h3 className="text-lg font-semibold mb-4">New Milestone</h3>
-        <form action={async (formData) => {
+        <form onSubmit={async (e) => {
+          e.preventDefault()
+          const formData = new FormData(e.currentTarget)
             await createMilestone(formData)
             setIsOpen(false)
           }} className="flex flex-col gap-4"
