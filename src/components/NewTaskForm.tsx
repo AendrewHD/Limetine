@@ -1,6 +1,6 @@
 'use client'
 
-import { createTask } from '@/app/actions'
+import { createTask } from '@/app/actions/task'
 import { useState, useActionState, useEffect } from 'react'
 
 type ActionState = { error?: string; success?: boolean } | null

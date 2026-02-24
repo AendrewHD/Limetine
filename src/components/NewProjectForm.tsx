@@ -1,6 +1,6 @@
 'use client'
 
-import { createProject } from '@/app/actions'
+import { createProject } from '@/app/actions/project'
 import { useState, useActionState, useEffect } from 'react'
 
 type ActionState = { error?: string; success?: boolean } | null

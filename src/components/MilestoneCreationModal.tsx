@@ -1,6 +1,6 @@
 'use client'
 
-import { createMilestone } from '@/app/actions'
+import { createMilestone } from '@/app/actions/milestone'
 import { format } from 'date-fns'
 import { Task } from '@prisma/client'
 import { useActionState, useEffect } from 'react'
