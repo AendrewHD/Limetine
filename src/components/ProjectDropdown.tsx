@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useTransition } from 'react'
+import { useState, useRef, useEffect, useActionState } from 'react'
 import Link from 'next/link'
 import { Project } from '@prisma/client'
 import { createProject } from '@/app/actions'
@@ -9,10 +9,51 @@ interface ProjectDropdownProps {
   projects: Project[]
 }
 
+type ActionState = { error?: string; success?: boolean } | null
+
+function ProjectDropdownForm({ onSuccess }: { onSuccess: () => void }) {
+  const [state, formAction, isPending] = useActionState<ActionState, FormData>(createProject, null)
+
+  useEffect(() => {
+    if (state?.success) {
+      onSuccess()
+    }
+  }, [state, onSuccess])
+
+  return (
+    <form
+      action={formAction}
+      className="flex flex-col gap-3"
+    >
+      {state?.error && <div className="text-red-500 text-sm">{state.error}</div>}
+      <input
+        name="name"
+        placeholder="Project Name"
+        className="p-2 text-sm border rounded dark:bg-zinc-800 dark:border-zinc-600 w-full"
+        required
+        autoFocus
+        disabled={isPending}
+      />
+      <textarea
+        name="description"
+        placeholder="Description (optional)"
+        className="p-2 text-sm border rounded dark:bg-zinc-800 dark:border-zinc-600 w-full resize-none h-20"
+        disabled={isPending}
+      />
+      <button
+        type="submit"
+        className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition disabled:opacity-50"
+        disabled={isPending}
+      >
+        {isPending ? 'Creating...' : 'Create Project'}
+      </button>
+    </form>
+  )
+}
+
 export default function ProjectDropdown({ projects }: ProjectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [showNewProjectForm, setShowNewProjectForm] = useState(false)
-  const [isPending, startTransition] = useTransition()
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -59,44 +100,10 @@ export default function ProjectDropdown({ projects }: ProjectDropdownProps) {
                    ✕
                  </button>
                </div>
-               <form
-                 onSubmit={(e) => {
-                   e.preventDefault()
-                   const formData = new FormData(e.currentTarget)
-                   startTransition(async () => {
-                     try {
-                        await createProject(formData)
-                        setShowNewProjectForm(false)
-                        setIsOpen(false)
-                     } catch (error) {
-                        console.error("Failed to create project", error)
-                     }
-                   })
-                 }}
-                 className="flex flex-col gap-3"
-               >
-                 <input
-                   name="name"
-                   placeholder="Project Name"
-                   className="p-2 text-sm border rounded dark:bg-zinc-800 dark:border-zinc-600 w-full"
-                   required
-                   autoFocus
-                   disabled={isPending}
-                 />
-                 <textarea
-                   name="description"
-                   placeholder="Description (optional)"
-                   className="p-2 text-sm border rounded dark:bg-zinc-800 dark:border-zinc-600 w-full resize-none h-20"
-                   disabled={isPending}
-                 />
-                 <button
-                   type="submit"
-                   className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition disabled:opacity-50"
-                   disabled={isPending}
-                 >
-                   {isPending ? 'Creating...' : 'Create Project'}
-                 </button>
-               </form>
+               <ProjectDropdownForm onSuccess={() => {
+                 setShowNewProjectForm(false)
+                 setIsOpen(false)
+               }} />
              </div>
            ) : (
              <div className="py-1">

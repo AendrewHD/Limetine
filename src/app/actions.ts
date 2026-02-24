@@ -8,7 +8,7 @@ import { getRandomColor } from '@/lib/colors'
 const MAX_NAME_LENGTH = 255
 const MAX_DESCRIPTION_LENGTH = 5000
 
-export async function createProject(formData: FormData) {
+export async function createProject(prevState: unknown, formData: FormData) {
   const name = formData.get('name') as string
   const description = formData.get('description') as string
 
@@ -36,6 +36,7 @@ export async function createProject(formData: FormData) {
 
   revalidatePath('/projects')
   revalidatePath('/')
+  return { success: true }
 }
 
 export async function getTimelineData() {
@@ -65,7 +66,7 @@ export const getProject = cache(async (id: string) => {
   })
 })
 
-export async function createTask(formData: FormData) {
+export async function createTask(prevState: unknown, formData: FormData) {
   const name = formData.get('name') as string
   const description = formData.get('description') as string
   const startDate = formData.get('startDate') as string
@@ -96,6 +97,7 @@ export async function createTask(formData: FormData) {
 
   revalidatePath(`/projects/${projectId}`)
   revalidatePath('/')
+  return { success: true }
 }
 
 export async function updateTask(id: string, projectId: string, data: { startDate?: Date; endDate?: Date; name?: string; status?: string }) {
@@ -115,7 +117,7 @@ export async function deleteTask(id: string, projectId: string) {
   revalidatePath('/')
 }
 
-export async function createMilestone(formData: FormData) {
+export async function createMilestone(prevState: unknown, formData: FormData) {
   const name = formData.get('name') as string
   const date = formData.get('date') as string
   const shape = formData.get('shape') as string || 'circle'
@@ -143,4 +145,5 @@ export async function createMilestone(formData: FormData) {
   })
 
   revalidatePath(`/projects/${task.projectId}`)
+  return { success: true }
 }
