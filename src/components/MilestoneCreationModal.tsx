@@ -19,7 +19,9 @@ export default function MilestoneCreationModal({ isOpen, onClose, initialDate, t
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white dark:bg-zinc-900 p-6 rounded-lg shadow-xl w-full max-w-md border dark:border-zinc-700">
         <h3 className="text-lg font-semibold mb-4">Create Milestone</h3>
-        <form action={async (formData) => {
+        <form onSubmit={async (e) => {
+            e.preventDefault()
+            const formData = new FormData(e.currentTarget)
             await createMilestone(formData)
             onClose()
           }}
