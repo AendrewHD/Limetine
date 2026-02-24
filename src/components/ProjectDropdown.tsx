@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useActionState } from 'react'
 import Link from 'next/link'
 import { Project } from '@prisma/client'
-import { createProject } from '@/app/actions'
+import { createProject } from '@/app/actions/project'
 
 interface ProjectDropdownProps {
   projects: Project[]
